@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IT-Ideenforum – Einstellungen</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="masthead">
+    <div class="inner">
+      <div class="topbar">
+        <p class="eyebrow">Konfiguration</p>
+        <a class="back" href="index.html">&larr; Alle Projekte</a>
+      </div>
+      <h1>Einstellungen</h1>
+      <p class="sub">API-Keys für die KI-Anbieter hinterlegen, damit „✨ Prompt generieren" funktioniert.</p>
+    </div>
+  </div>
+
+  <div class="settings-wrap">
+    <p class="settings-intro">
+      Trage hier deinen API-Key für einen oder mehrere Anbieter ein. Die Keys
+      werden ausschließlich <strong>serverseitig</strong> gespeichert (als Datei
+      im Projektordner) und niemals an den Browser zurückgegeben oder in Git
+      eingecheckt.
+    </p>
+
+    <div id="settings-list" class="settings-list"></div>
+
+    <div class="settings-help">
+      <h2>Wo bekomme ich einen API-Key her?</h2>
+      <ul>
+        <li><strong>Claude (Anthropic):</strong> console.anthropic.com → API Keys → Create Key</li>
+        <li><strong>Google Gemini:</strong> aistudio.google.com/app/apikeys → Create API Key (kostenloser Tarif verfügbar)</li>
+        <li><strong>OpenAI (ChatGPT):</strong> platform.openai.com/account/api-keys → Create new secret key</li>
+      </ul>
+      <p class="hint">
+        Wichtig: Ein ChatGPT-Plus- oder Gemini-Abo ist <strong>nicht</strong>
+        dasselbe wie ein API-Key – du brauchst den separaten Key aus dem
+        jeweiligen Entwickler-Portal oben.
+      </p>
+    </div>
+  </div>
+
+  <footer class="pagefoot">IT-Ideenforum · lokal &amp; offline</footer>
+
+  <script src="js/api.js"></script>
+  <script src="js/settings.js"></script>
+</body>
+</html>

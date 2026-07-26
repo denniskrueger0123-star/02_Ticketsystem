@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
-const { listModels, providerStatus, DEFAULT_MODEL } = require('./lib/llm');
+const { listModels, providerStatus, settingsStatus, saveKey, clearKey, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +13,34 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // Verfügbare LLM-Modelle + Anbieter-Status (welcher Key ist gesetzt?)
 app.get('/api/models', (req, res) => {
   res.json({ models: listModels(), default: DEFAULT_MODEL, providers: providerStatus() });
+});
+
+// Einstellungen: API-Keys per UI verwalten (werden serverseitig in Dateien
+// im Projektordner geschrieben, niemals ans Frontend zurückgegeben)
+app.get('/api/settings', (req, res) => {
+  res.json({ providers: settingsStatus() });
+});
+
+app.post('/api/settings/:provider', (req, res) => {
+  try {
+    saveKey(req.params.provider, req.body.key);
+    res.json({ providers: settingsStatus() });
+  } catch (err) {
+    if (err instanceof LlmError) {
+      res.status(400).json({ error: err.message, code: err.code });
+    } else {
+      res.status(500).json({ error: 'Interner Fehler beim Speichern.' });
+    }
+  }
+});
+
+app.delete('/api/settings/:provider', (req, res) => {
+  try {
+    clearKey(req.params.provider);
+    res.json({ providers: settingsStatus() });
+  } catch (err) {
+    res.status(500).json({ error: 'Interner Fehler beim Löschen.' });
+  }
 });
 
 app.use('/api/projects', projectsRouter);

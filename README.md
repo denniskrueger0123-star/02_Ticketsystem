@@ -53,6 +53,15 @@ Modell dafür verwendet wird.
 Die Generierung läuft **serverseitig** – der API-Key liegt **niemals im
 Browser** und wird nicht in Git mitgeliefert.
 
+### API-Keys eintragen: über die Einstellungsseite (empfohlen)
+
+Oben rechts im Header findest du den Link **„⚙ Einstellungen"**
+(<http://localhost:3000/settings.html>). Dort siehst du alle drei Anbieter mit
+Status (grüner Punkt = Key hinterlegt), kannst einen Key einfügen, auf
+**„Speichern"** klicken und ihn bei Bedarf wieder **„Löschen"**. Der Key wird
+serverseitig in die passende Datei (`api-key.txt`, `gemini-key.txt`,
+`openai-key.txt`) geschrieben – kein manuelles Anlegen von Dateien mehr nötig.
+
 ### Unterstützte Anbieter & Modelle
 
 | Anbieter | Modelle (günstig → stark) | Key-Datei | API-Key bekommst du bei |
@@ -66,6 +75,10 @@ Für das Tool brauchst du je Anbieter einen eigenen API-Key (siehe Spalte oben).
 
 ### So aktivierst du einen Anbieter
 
+**Variante A – Einstellungsseite (einfachste Methode):** Key im Browser unter
+„⚙ Einstellungen" einfügen und auf „Speichern" klicken. Kein Neustart nötig.
+
+**Variante B – manuell per Datei:**
 1. Lege im Projektordner die passende Key-Datei an (z. B. `gemini-key.txt`).
 2. Trage nur deinen API-Key hinein und speichere.
 3. Server neu starten (`start.bat` schließen und erneut doppelklicken).

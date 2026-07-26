@@ -70,6 +70,57 @@ function providerStatus() {
   return out;
 }
 
+// ── Einstellungen: Keys per UI lesbar/schreibbar machen ──────────────
+function maskKey(key) {
+  if (key.length <= 8) return '•'.repeat(key.length);
+  return `${key.slice(0, 4)}${'•'.repeat(Math.max(4, key.length - 8))}${key.slice(-4)}`;
+}
+
+function readFileKey(provider) {
+  const cfg = PROVIDERS[provider];
+  try {
+    return fs.readFileSync(path.join(ROOT, cfg.keyFile), 'utf-8').trim();
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+    return '';
+  }
+}
+
+function settingsStatus() {
+  const out = {};
+  for (const [id, cfg] of Object.entries(PROVIDERS)) {
+    const envKey = process.env[cfg.keyEnv] && process.env[cfg.keyEnv].trim();
+    const fileKey = readFileKey(id);
+    const source = envKey ? 'env' : fileKey ? 'file' : null;
+    out[id] = {
+      label: cfg.label,
+      keyEnv: cfg.keyEnv,
+      configured: !!source,
+      source,
+      preview: fileKey ? maskKey(fileKey) : '',
+    };
+  }
+  return out;
+}
+
+function saveKey(provider, key) {
+  const cfg = PROVIDERS[provider];
+  if (!cfg) throw new LlmError('Unbekannter Anbieter.', 'BAD_PROVIDER');
+  const trimmed = (key || '').trim();
+  if (!trimmed) throw new LlmError('Kein Key übergeben.', 'BAD_KEY');
+  fs.writeFileSync(path.join(ROOT, cfg.keyFile), trimmed + '\n', 'utf-8');
+}
+
+function clearKey(provider) {
+  const cfg = PROVIDERS[provider];
+  if (!cfg) throw new LlmError('Unbekannter Anbieter.', 'BAD_PROVIDER');
+  try {
+    fs.unlinkSync(path.join(ROOT, cfg.keyFile));
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+}
+
 function buildUserContent(project, ticket) {
   return (
     `Projekt: ${project.name}\n` +
@@ -172,4 +223,13 @@ async function generatePrompt({ project, ticket, modelId }) {
   return text;
 }
 
-module.exports = { generatePrompt, listModels, providerStatus, LlmError, DEFAULT_MODEL };
+module.exports = {
+  generatePrompt,
+  listModels,
+  providerStatus,
+  settingsStatus,
+  saveKey,
+  clearKey,
+  LlmError,
+  DEFAULT_MODEL,
+};

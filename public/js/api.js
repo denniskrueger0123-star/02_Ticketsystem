@@ -53,4 +53,14 @@ const api = {
   getModels() {
     return this.request('GET', '/api/models');
   },
+
+  getSettings() {
+    return this.request('GET', '/api/settings');
+  },
+  saveSetting(provider, key) {
+    return this.request('POST', `/api/settings/${provider}`, { key });
+  },
+  clearSetting(provider) {
+    return this.request('DELETE', `/api/settings/${provider}`);
+  },
 };
