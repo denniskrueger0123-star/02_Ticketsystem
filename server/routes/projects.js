@@ -46,6 +46,8 @@ router.get('/:projectId/export', async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="${safeName}.json"`);
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.send(JSON.stringify(data, null, 2));
+  // Export-Zeitpunkt vermerken (Nebeneffekt nach dem Senden).
+  storage.updateProject(req.params.projectId, { lastExportedAt: new Date().toISOString() }).catch(() => {});
 });
 
 router.put('/:projectId', async (req, res) => {

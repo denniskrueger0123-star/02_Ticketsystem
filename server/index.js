@@ -13,6 +13,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// API-Antworten nie cachen, damit die Liste nach Änderungen/Löschen aktuell ist.
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // Verfügbare LLM-Modelle + Anbieter-Status (welcher Key ist gesetzt?)
 app.get('/api/models', (req, res) => {
   res.json({ models: listModels(), default: DEFAULT_MODEL, providers: providerStatus() });

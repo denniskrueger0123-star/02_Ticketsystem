@@ -61,7 +61,7 @@ async function getProject(projectId) {
   }
 }
 
-async function createProject({ name, description, promptSkill, bmPromptSkill, bmPrompt }) {
+async function createProject({ name, description, promptSkill, bmPromptSkill, bmPrompt, importedAt }) {
   const id = randomUUID();
   const now = new Date().toISOString();
   const project = {
@@ -71,6 +71,8 @@ async function createProject({ name, description, promptSkill, bmPromptSkill, bm
     promptSkill: promptSkill || '',
     bmPromptSkill: bmPromptSkill || '',
     bmPrompt: bmPrompt || '',
+    importedAt: importedAt || null,
+    lastExportedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -79,7 +81,7 @@ async function createProject({ name, description, promptSkill, bmPromptSkill, bm
   return project;
 }
 
-async function updateProject(projectId, { name, description, promptSkill, bmPromptSkill, bmPrompt }) {
+async function updateProject(projectId, { name, description, promptSkill, bmPromptSkill, bmPrompt, lastExportedAt }) {
   const project = await getProject(projectId);
   if (!project) return null;
   if (name !== undefined) project.name = name;
@@ -87,6 +89,7 @@ async function updateProject(projectId, { name, description, promptSkill, bmProm
   if (promptSkill !== undefined) project.promptSkill = promptSkill;
   if (bmPromptSkill !== undefined) project.bmPromptSkill = bmPromptSkill;
   if (bmPrompt !== undefined) project.bmPrompt = bmPrompt;
+  if (lastExportedAt !== undefined) project.lastExportedAt = lastExportedAt;
   project.updatedAt = new Date().toISOString();
   await writeJson(projectFile(projectId), project);
   return project;
@@ -227,6 +230,7 @@ async function importProject(data) {
     promptSkill: src.promptSkill || '',
     bmPromptSkill: src.bmPromptSkill || '',
     bmPrompt: src.bmPrompt || '',
+    importedAt: new Date().toISOString(),
   });
 
   let ticketCount = 0;

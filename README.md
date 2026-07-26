@@ -150,6 +150,10 @@ unangetastet, es kann also nichts verloren gehen. Danach kannst du das alte
 Projekt bei Bedarf löschen. Interne IDs und Zeitstempel werden beim Import
 frisch vergeben; als Pflichtfeld genügt der Projekt-`name`.
 
+Auf der Startseite steht unter jedem Projekt eine **Zeitstempel-Zeile**
+(Erstellt, Importiert, Zuletzt exportiert). So lassen sich mehrere gleichnamige
+Projekte – etwa nach mehreren Import-Runden – zuverlässig auseinanderhalten.
+
 ## Datenhaltung
 
 Es wird **keine Datenbank** verwendet – alle Daten liegen als JSON-Dateien
@@ -162,3 +166,6 @@ einem Unterordner `tickets/`, in dem jedes Ticket als eigene `<id>.json` liegt.
 Prozess), `schweregrad` (Kritisch/Hoch/Mittel/Klein/Recherche), `status`
 (Offen/In Arbeit/Erledigt/Zurückgestellt), `bmStatus` (Boss-Move-Markierung,
 true/false), `claudePrompt` (manuell) sowie `createdAt`/`updatedAt`.
+
+In der Übersichtstabelle im Projekt lässt sich der **Status jedes Tickets direkt
+per Dropdown** umstellen – ohne den Bearbeiten-Dialog zu öffnen.

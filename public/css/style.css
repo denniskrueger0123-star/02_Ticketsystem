@@ -170,6 +170,17 @@ table.ovw tbody tr:last-child td { border-bottom: none; }
 table.ovw .num { font-weight: 800; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.ovw .titlecell { font-weight: 600; }
 
+/* Schnell-Status-Dropdown in der Übersicht */
+.ovw-status {
+  width: auto; max-width: 140px; padding: 2px 6px; font-size: 8pt; font-weight: 800;
+  border-radius: 5px; border: 1.5px solid var(--line); cursor: pointer; color: #fff;
+}
+.ovw-status.st-Offen          { background: var(--st-open); border-color: var(--st-open); }
+.ovw-status.st-InArbeit       { background: var(--st-progress); border-color: var(--st-progress); }
+.ovw-status.st-Erledigt       { background: var(--st-done); border-color: var(--st-done); }
+.ovw-status.st-Zurückgestellt { background: var(--st-deferred); border-color: var(--st-deferred); }
+.ovw-status option { background: #fff; color: var(--ink); font-weight: 600; }
+
 /* ── Detailbereich: Schweregrad-Gruppen ───────────────────────────── */
 .detail-wrap { max-width: 1080px; margin: 0 auto; }
 .sevgroup-head { display: flex; align-items: center; gap: 10px; padding: 18px 24px 8px; margin-top: 10px; }
@@ -230,7 +241,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 }
 .project-card:hover { border-color: var(--accent); }
 .project-card h3 { margin: 0 0 6px; font-size: 12.5pt; }
-.project-card .pdesc { color: var(--ink-soft); font-size: 9pt; margin: 0 0 10px; white-space: pre-wrap; }
+.project-card .pdesc { color: var(--ink-soft); font-size: 9pt; margin: 0 0 8px; white-space: pre-wrap; }
+.project-card .pmeta { color: var(--ink-soft); font-size: 7.8pt; margin: 0 0 10px; font-variant-numeric: tabular-nums; }
+.project-card .pmeta:empty { display: none; }
 .project-card .pactions { display: flex; gap: 6px; }
 .empty-state { color: var(--ink-soft); text-align: center; padding: 48px 0; }
 

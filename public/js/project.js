@@ -223,7 +223,7 @@ function render() {
     const tdSev = document.createElement('td');
     tdSev.appendChild(makeTag(`tag-sev-${t.schweregrad}`, t.schweregrad));
     const tdSt = document.createElement('td');
-    tdSt.appendChild(makeTag(`tag-st-${slug(t.status)}`, t.status));
+    tdSt.appendChild(makeStatusSelect(t));
     const tdBm = document.createElement('td');
     tdBm.className = 'bm-cell';
     const bmDot = document.createElement('span');
@@ -271,6 +271,40 @@ function render() {
   footEl.textContent = `${projectData.name} · Ideensammlung als Ticketsystem`;
   applyFilters();
   updateBmCount();
+}
+
+const STATUS_OPTIONS = ['Offen', 'In Arbeit', 'Erledigt', 'Zurückgestellt'];
+
+// Kompaktes Status-Dropdown für die Übersichtstabelle – Status direkt ändern.
+function makeStatusSelect(t) {
+  const sel = document.createElement('select');
+  sel.className = `ovw-status st-${slug(t.status)}`;
+  STATUS_OPTIONS.forEach((s) => {
+    const o = document.createElement('option');
+    o.value = s;
+    o.textContent = s;
+    if (s === t.status) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('click', (e) => e.stopPropagation());
+  sel.addEventListener('change', async (e) => {
+    e.stopPropagation();
+    const newStatus = sel.value;
+    const prev = t.status;
+    sel.disabled = true;
+    try {
+      await api.updateTicket(projectId, t.id, { status: newStatus });
+      t.status = newStatus;
+      const y = window.scrollY;
+      await loadTickets();
+      window.scrollTo(0, y);
+    } catch (err) {
+      alert('Status konnte nicht geändert werden: ' + err.message);
+      sel.value = prev;
+      sel.disabled = false;
+    }
+  });
+  return sel;
 }
 
 function makeTag(cls, text) {

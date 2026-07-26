@@ -88,6 +88,26 @@ async function deleteProject(project) {
   await loadProjects();
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return d.toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function projectMeta(project) {
+  const parts = [];
+  const created = fmtDateTime(project.createdAt);
+  if (created) parts.push(`Erstellt: ${created}`);
+  const imported = fmtDateTime(project.importedAt);
+  if (imported) parts.push(`Importiert: ${imported}`);
+  const exported = fmtDateTime(project.lastExportedAt);
+  if (exported) parts.push(`Zuletzt exportiert: ${exported}`);
+  return parts.join('  ·  ');
+}
+
 function renderProjects(projects) {
   projectListEl.innerHTML = '';
   if (projects.length === 0) {
@@ -100,6 +120,7 @@ function renderProjects(projects) {
     card.innerHTML = `
       <h3></h3>
       <p class="pdesc"></p>
+      <p class="pmeta"></p>
       <div class="pactions">
         <button class="edit-btn">Bearbeiten</button>
         <button class="export-btn">Exportieren</button>
@@ -108,6 +129,7 @@ function renderProjects(projects) {
     `;
     card.querySelector('h3').textContent = project.name;
     card.querySelector('.pdesc').textContent = project.description || '';
+    card.querySelector('.pmeta').textContent = projectMeta(project);
 
     card.addEventListener('click', () => {
       window.location.href = `project.html?id=${encodeURIComponent(project.id)}`;
