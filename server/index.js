@@ -1,8 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
 const { listModels, providerStatus, settingsStatus, saveKey, clearKey, DEFAULT_MODEL, LlmError } = require('./lib/llm');
+
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +44,11 @@ app.delete('/api/settings/:provider', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Interner Fehler beim Löschen.' });
   }
+});
+
+// App-Version (für UI)
+app.get('/api/version', (req, res) => {
+  res.json({ version: pkg.version });
 });
 
 app.use('/api/projects', projectsRouter);

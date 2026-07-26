@@ -63,4 +63,8 @@ const api = {
   clearSetting(provider) {
     return this.request('DELETE', `/api/settings/${provider}`);
   },
+
+  getVersion() {
+    return this.request('GET', '/api/version');
+  },
 };
