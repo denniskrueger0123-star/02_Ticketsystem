@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IT-Ideenforum – Tickets</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1 id="project-title">Projekt</h1>
+    <a href="index.html">&larr; Alle Projekte</a>
+  </header>
+
+  <main>
+    <p id="project-description" class="project-desc"></p>
+
+    <div class="toolbar">
+      <div class="filters">
+        <select id="filter-kategorie">
+          <option value="">Alle Kategorien</option>
+          <option value="Bug">Bug</option>
+          <option value="Feature">Feature</option>
+          <option value="Idee">Idee</option>
+          <option value="Verbesserung">Verbesserung</option>
+        </select>
+        <select id="filter-schweregrad">
+          <option value="">Alle Schweregrade</option>
+          <option value="Niedrig">Niedrig</option>
+          <option value="Mittel">Mittel</option>
+          <option value="Hoch">Hoch</option>
+          <option value="Kritisch">Kritisch</option>
+        </select>
+        <select id="filter-status">
+          <option value="">Alle Status</option>
+          <option value="Offen">Offen</option>
+          <option value="In Arbeit">In Arbeit</option>
+          <option value="Erledigt">Erledigt</option>
+        </select>
+      </div>
+      <button id="new-ticket-btn" class="btn-primary">+ Neues Ticket</button>
+    </div>
+
+    <div id="ticket-list" class="card-list"></div>
+  </main>
+
+  <div id="ticket-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="ticket-modal-title">Neues Ticket</h2>
+      <form id="ticket-form">
+        <input type="hidden" id="ticket-id" />
+        <div class="form-group">
+          <label for="ticket-titel">Titel</label>
+          <input type="text" id="ticket-titel" required />
+        </div>
+        <div class="form-group">
+          <label for="ticket-beschreibung">Beschreibung</label>
+          <textarea id="ticket-beschreibung" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="ticket-kategorie">Kategorie</label>
+            <select id="ticket-kategorie">
+              <option value="Bug">Bug</option>
+              <option value="Feature">Feature</option>
+              <option value="Idee">Idee</option>
+              <option value="Verbesserung">Verbesserung</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ticket-schweregrad">Schweregrad</label>
+            <select id="ticket-schweregrad">
+              <option value="Niedrig">Niedrig</option>
+              <option value="Mittel">Mittel</option>
+              <option value="Hoch">Hoch</option>
+              <option value="Kritisch">Kritisch</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ticket-status">Status</label>
+            <select id="ticket-status">
+              <option value="Offen">Offen</option>
+              <option value="In Arbeit">In Arbeit</option>
+              <option value="Erledigt">Erledigt</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="ticket-prompt">Claude-Code-Prompt (manuell)</label>
+          <textarea id="ticket-prompt" rows="5" placeholder="Hier später den Prompt für Claude Code eintragen..."></textarea>
+        </div>
+        <div class="error-text" id="ticket-form-error"></div>
+        <div class="modal-actions">
+          <button type="button" id="ticket-cancel-btn">Abbrechen</button>
+          <button type="submit" class="btn-primary">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/project.js"></script>
+</body>
+</html>
