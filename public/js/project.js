@@ -25,6 +25,12 @@ const schweregradInput = document.getElementById('ticket-schweregrad');
 const statusInput = document.getElementById('ticket-status');
 const formErrorEl = document.getElementById('ticket-form-error');
 
+// Projekt-Anweisungen (Skill) Modal
+const projectEditModalEl = document.getElementById('project-edit-modal');
+const projectEditFormEl = document.getElementById('project-edit-form');
+const peSkillInput = document.getElementById('pe-skill');
+const projectEditErrorEl = document.getElementById('project-edit-error');
+
 let projectData = null;
 let allTickets = [];
 const state = { cat: 'all', sev: 'all', st: 'all' };
@@ -33,6 +39,30 @@ let cards = []; // { ticket, cardEl, rowEl, severity }
 document.getElementById('new-ticket-btn').addEventListener('click', () => openModal());
 document.getElementById('ticket-cancel-btn').addEventListener('click', closeModal);
 formEl.addEventListener('submit', onSubmit);
+
+document.getElementById('edit-project-btn').addEventListener('click', openProjectEditModal);
+document.getElementById('project-edit-cancel-btn').addEventListener('click', closeProjectEditModal);
+projectEditFormEl.addEventListener('submit', onProjectEditSubmit);
+
+function openProjectEditModal() {
+  projectEditErrorEl.textContent = '';
+  peSkillInput.value = projectData.promptSkill || '';
+  projectEditModalEl.classList.remove('hidden');
+  peSkillInput.focus();
+}
+function closeProjectEditModal() {
+  projectEditModalEl.classList.add('hidden');
+}
+async function onProjectEditSubmit(e) {
+  e.preventDefault();
+  projectEditErrorEl.textContent = '';
+  try {
+    projectData = await api.updateProject(projectId, { promptSkill: peSkillInput.value.trim() });
+    closeProjectEditModal();
+  } catch (err) {
+    projectEditErrorEl.textContent = err.message;
+  }
+}
 document.querySelectorAll('.chip').forEach((chip) => {
   chip.addEventListener('click', () => {
     const dim = chip.dataset.dim;

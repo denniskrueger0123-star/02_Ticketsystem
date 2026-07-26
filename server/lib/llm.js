@@ -208,7 +208,9 @@ async function generatePrompt({ project, ticket, modelId }) {
     );
   }
 
-  const system = SYSTEM_PROMPT;
+  const system = project.promptSkill
+    ? `${SYSTEM_PROMPT}\n\nZusätzliche Anweisungen für dieses Projekt (unbedingt beachten):\n${project.promptSkill}`
+    : SYSTEM_PROMPT;
   const user = buildUserContent(project, ticket);
 
   let text;

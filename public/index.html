@@ -40,6 +40,11 @@
           <label for="project-description">Beschreibung</label>
           <textarea id="project-description" rows="3"></textarea>
         </div>
+        <div class="form-group">
+          <label for="project-skill">Zusätzliche KI-Anweisungen (optional)</label>
+          <textarea id="project-skill" rows="3" placeholder="z. B. „Verwende TypeScript. Achte auf Barrierefreiheit. Schreibe Tests mit Vitest.“"></textarea>
+          <p class="field-hint">Wird bei jeder Prompt-Generierung in diesem Projekt automatisch mitgeschickt.</p>
+        </div>
         <div class="error-text" id="project-form-error"></div>
         <div class="modal-actions">
           <button type="button" id="project-cancel-btn">Abbrechen</button>

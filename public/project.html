@@ -13,6 +13,7 @@
       <div class="topbar">
         <p class="eyebrow">Ideensammlung als Ticketsystem</p>
         <span class="topbar-links">
+          <button class="gear-link back" id="edit-project-btn" type="button">✏ KI-Anweisungen</button>
           <a class="gear-link back" href="settings.html">⚙ Einstellungen</a>
           <a class="back" href="index.html">&larr; Alle Projekte</a>
         </span>
@@ -121,6 +122,27 @@
         <div class="error-text" id="ticket-form-error"></div>
         <div class="modal-actions">
           <button type="button" id="ticket-cancel-btn">Abbrechen</button>
+          <button type="submit" class="btn-primary">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="project-edit-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>KI-Anweisungen für dieses Projekt</h2>
+      <p class="field-hint" style="margin-top:-8px; margin-bottom:14px;">
+        Diese Anweisungen werden bei jeder Prompt-Generierung in diesem Projekt automatisch mitgeschickt –
+        z. B. Tech-Stack, Code-Stil oder Qualitätsvorgaben.
+      </p>
+      <form id="project-edit-form">
+        <div class="form-group">
+          <label for="pe-skill">Zusätzliche KI-Anweisungen</label>
+          <textarea id="pe-skill" rows="5" placeholder="z. B. „Verwende TypeScript. Achte auf Barrierefreiheit. Schreibe Tests mit Vitest.“"></textarea>
+        </div>
+        <div class="error-text" id="project-edit-error"></div>
+        <div class="modal-actions">
+          <button type="button" id="project-edit-cancel-btn">Abbrechen</button>
           <button type="submit" class="btn-primary">Speichern</button>
         </div>
       </form>

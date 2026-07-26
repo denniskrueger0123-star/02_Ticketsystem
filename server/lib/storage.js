@@ -61,20 +61,28 @@ async function getProject(projectId) {
   }
 }
 
-async function createProject({ name, description }) {
+async function createProject({ name, description, promptSkill }) {
   const id = randomUUID();
   const now = new Date().toISOString();
-  const project = { id, name, description: description || '', createdAt: now, updatedAt: now };
+  const project = {
+    id,
+    name,
+    description: description || '',
+    promptSkill: promptSkill || '',
+    createdAt: now,
+    updatedAt: now,
+  };
   await fs.mkdir(ticketsDir(id), { recursive: true });
   await writeJson(projectFile(id), project);
   return project;
 }
 
-async function updateProject(projectId, { name, description }) {
+async function updateProject(projectId, { name, description, promptSkill }) {
   const project = await getProject(projectId);
   if (!project) return null;
   if (name !== undefined) project.name = name;
   if (description !== undefined) project.description = description;
+  if (promptSkill !== undefined) project.promptSkill = promptSkill;
   project.updatedAt = new Date().toISOString();
   await writeJson(projectFile(projectId), project);
   return project;

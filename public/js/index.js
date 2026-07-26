@@ -5,6 +5,7 @@ const modalTitleEl = document.getElementById('modal-title');
 const idInput = document.getElementById('project-id');
 const nameInput = document.getElementById('project-name');
 const descInput = document.getElementById('project-description');
+const skillInput = document.getElementById('project-skill');
 const formErrorEl = document.getElementById('project-form-error');
 
 document.getElementById('new-project-btn').addEventListener('click', () => openModal());
@@ -18,11 +19,13 @@ function openModal(project) {
     idInput.value = project.id;
     nameInput.value = project.name;
     descInput.value = project.description || '';
+    skillInput.value = project.promptSkill || '';
   } else {
     modalTitleEl.textContent = 'Neues Projekt';
     idInput.value = '';
     nameInput.value = '';
     descInput.value = '';
+    skillInput.value = '';
   }
   modalEl.classList.remove('hidden');
   nameInput.focus();
@@ -35,7 +38,11 @@ function closeModal() {
 async function onSubmit(e) {
   e.preventDefault();
   formErrorEl.textContent = '';
-  const data = { name: nameInput.value.trim(), description: descInput.value.trim() };
+  const data = {
+    name: nameInput.value.trim(),
+    description: descInput.value.trim(),
+    promptSkill: skillInput.value.trim(),
+  };
   try {
     if (idInput.value) {
       await api.updateProject(idInput.value, data);

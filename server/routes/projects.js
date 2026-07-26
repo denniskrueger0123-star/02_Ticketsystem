@@ -9,11 +9,11 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, promptSkill } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'name ist erforderlich' });
   }
-  const project = await storage.createProject({ name, description });
+  const project = await storage.createProject({ name, description, promptSkill });
   res.status(201).json(project);
 });
 
@@ -24,11 +24,11 @@ router.get('/:projectId', async (req, res) => {
 });
 
 router.put('/:projectId', async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, promptSkill } = req.body;
   if (name !== undefined && !name.trim()) {
     return res.status(400).json({ error: 'name darf nicht leer sein' });
   }
-  const project = await storage.updateProject(req.params.projectId, { name, description });
+  const project = await storage.updateProject(req.params.projectId, { name, description, promptSkill });
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   res.json(project);
 });

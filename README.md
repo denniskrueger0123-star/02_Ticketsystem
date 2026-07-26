@@ -89,6 +89,15 @@ Klick auf Generieren zeigt dann einen Hinweis, welche Datei fehlt. Alternativ
 lassen sich die Keys über die Umgebungsvariablen `ANTHROPIC_API_KEY`,
 `GEMINI_API_KEY`, `OPENAI_API_KEY` setzen; das Standardmodell über `LLM_MODEL`.
 
+### Eigene KI-Anweisungen pro Projekt
+
+Im Projekt oben auf **„✏ KI-Anweisungen"** klicken, um projektweite
+Zusatzanweisungen zu hinterlegen (z. B. „Verwende TypeScript", „Schreibe Tests
+mit Vitest", „Achte auf Barrierefreiheit"). Diese werden bei **jeder**
+Prompt-Generierung in diesem Projekt automatisch an das Modell mitgeschickt –
+zusätzlich zu Titel, Beschreibung, Kategorie, Schweregrad und Status des
+jeweiligen Tickets.
+
 ## Datenhaltung
 
 Es wird **keine Datenbank** verwendet – alle Daten liegen als JSON-Dateien
