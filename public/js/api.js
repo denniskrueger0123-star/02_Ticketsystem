@@ -67,4 +67,11 @@ const api = {
   getVersion() {
     return this.request('GET', '/api/version');
   },
+
+  exportProjectUrl(projectId) {
+    return `/api/projects/${encodeURIComponent(projectId)}/export`;
+  },
+  importProject(data) {
+    return this.request('POST', '/api/projects/import', data);
+  },
 };

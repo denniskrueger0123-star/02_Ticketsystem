@@ -164,6 +164,78 @@ async function deleteTicket(projectId, ticketId) {
   return true;
 }
 
+// --- Export / Import (ganzes Projekt inkl. Tickets als eine JSON-Datei) ---
+
+const EXPORT_FORMAT = 'it-ideenforum-project-export';
+const EXPORT_VERSION = 1;
+
+// Erzeugt ein aufgeräumtes, extern editierbares JSON-Objekt. Interne IDs und
+// Zeitstempel werden bewusst weggelassen – die Datei soll leicht von einer
+// anderen KI gelesen und verändert werden können; beim Import werden IDs neu
+// vergeben.
+async function exportProject(projectId) {
+  const project = await getProject(projectId);
+  if (!project) return null;
+  const tickets = (await listTickets(projectId)) || [];
+  return {
+    format: EXPORT_FORMAT,
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    project: {
+      name: project.name,
+      description: project.description || '',
+      promptSkill: project.promptSkill || '',
+    },
+    tickets: tickets.map((t) => ({
+      titel: t.titel || '',
+      beschreibung: t.beschreibung || '',
+      kategorie: t.kategorie || '',
+      schweregrad: t.schweregrad || '',
+      status: t.status || 'Offen',
+      claudePrompt: t.claudePrompt || '',
+    })),
+  };
+}
+
+// Legt aus einem Export-Objekt ein NEUES Projekt an (überschreibt nie ein
+// bestehendes – so kann beim Import nichts verloren gehen). Akzeptiert sowohl
+// deutsche als auch englische Feldnamen, damit extern bearbeitete Dateien
+// tolerant eingelesen werden.
+async function importProject(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Die Datei enthält kein gültiges JSON-Objekt.');
+  }
+  const src = data.project && typeof data.project === 'object' ? data.project : data;
+  const name = String(src.name || '').trim();
+  if (!name) {
+    throw new Error('Im Import fehlt der Projektname (Feld "name").');
+  }
+  let ticketsSrc = data.tickets;
+  if (!Array.isArray(ticketsSrc)) ticketsSrc = Array.isArray(src.tickets) ? src.tickets : [];
+
+  const project = await createProject({
+    name,
+    description: src.description || '',
+    promptSkill: src.promptSkill || '',
+  });
+
+  let ticketCount = 0;
+  for (const t of ticketsSrc) {
+    if (!t || typeof t !== 'object') continue;
+    await createTicket(project.id, {
+      titel: t.titel || t.title || '',
+      beschreibung: t.beschreibung || t.description || '',
+      kategorie: t.kategorie || t.category || '',
+      schweregrad: t.schweregrad || t.severity || '',
+      status: t.status || 'Offen',
+      claudePrompt: t.claudePrompt || t.prompt || '',
+    });
+    ticketCount++;
+  }
+
+  return { project, ticketCount };
+}
+
 module.exports = {
   listProjects,
   getProject,
@@ -175,4 +247,6 @@ module.exports = {
   createTicket,
   updateTicket,
   deleteTicket,
+  exportProject,
+  importProject,
 };

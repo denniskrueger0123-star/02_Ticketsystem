@@ -110,6 +110,28 @@ Prompt-Generierung in diesem Projekt automatisch an das Modell mitgeschickt –
 zusätzlich zu Titel, Beschreibung, Kategorie, Schweregrad und Status des
 jeweiligen Tickets.
 
+## Projekte exportieren & importieren
+
+Auf der Startseite hat jede Projektkarte einen Button **„Exportieren"** (auch im
+Projekt oben über **„⭳ Export"**). Damit lädst du das **komplette Projekt inkl.
+aller Tickets** als eine JSON-Datei herunter. Die Datei ist bewusst
+menschen- und KI-lesbar aufgebaut (Projektname, Beschreibung, KI-Anweisungen und
+eine `tickets`-Liste mit Titel, Beschreibung, Kategorie, Schweregrad, Status und
+Prompt).
+
+**Typischer Ablauf mit externer KI:**
+
+1. Projekt **exportieren** (z. B. mit 10 Tickets).
+2. Die JSON-Datei in eine beliebige externe KI/Anwendung geben, dort auslesen,
+   verändern oder um neue Tickets ergänzen lassen.
+3. Die bearbeitete Datei über **„⭱ Projekt importieren"** (Startseite, oben)
+   wieder hochladen.
+
+Der Import legt daraus **immer ein neues Projekt** an – dein Original bleibt
+unangetastet, es kann also nichts verloren gehen. Danach kannst du das alte
+Projekt bei Bedarf löschen. Interne IDs und Zeitstempel werden beim Import
+frisch vergeben; als Pflichtfeld genügt der Projekt-`name`.
+
 ## Datenhaltung
 
 Es wird **keine Datenbank** verwendet – alle Daten liegen als JSON-Dateien

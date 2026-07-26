@@ -40,6 +40,9 @@ document.getElementById('new-ticket-btn').addEventListener('click', () => openMo
 document.getElementById('ticket-cancel-btn').addEventListener('click', closeModal);
 formEl.addEventListener('submit', onSubmit);
 
+document.getElementById('export-project-btn').addEventListener('click', () => {
+  window.location.href = api.exportProjectUrl(projectId);
+});
 document.getElementById('edit-project-btn').addEventListener('click', openProjectEditModal);
 document.getElementById('project-edit-cancel-btn').addEventListener('click', closeProjectEditModal);
 projectEditFormEl.addEventListener('submit', onProjectEditSubmit);

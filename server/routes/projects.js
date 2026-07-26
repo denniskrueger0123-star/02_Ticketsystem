@@ -17,10 +17,34 @@ router.post('/', async (req, res) => {
   res.status(201).json(project);
 });
 
+// Import: legt aus einer hochgeladenen Export-Datei ein neues Projekt an.
+// Muss VOR '/:projectId' stehen, sonst würde 'import' als projectId gedeutet.
+router.post('/import', async (req, res) => {
+  try {
+    const result = await storage.importProject(req.body);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/:projectId', async (req, res) => {
   const project = await storage.getProject(req.params.projectId);
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   res.json(project);
+});
+
+// Export: ganzes Projekt inkl. aller Tickets als JSON-Datei zum Download.
+router.get('/:projectId/export', async (req, res) => {
+  const data = await storage.exportProject(req.params.projectId);
+  if (!data) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+  const safeName = (data.project.name || 'projekt')
+    .replace(/[^a-z0-9-_]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60) || 'projekt';
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}.json"`);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.send(JSON.stringify(data, null, 2));
 });
 
 router.put('/:projectId', async (req, res) => {

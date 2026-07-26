@@ -12,6 +12,32 @@ document.getElementById('new-project-btn').addEventListener('click', () => openM
 document.getElementById('project-cancel-btn').addEventListener('click', closeModal);
 formEl.addEventListener('submit', onSubmit);
 
+const importBtn = document.getElementById('import-project-btn');
+const importFileInput = document.getElementById('import-file-input');
+importBtn.addEventListener('click', () => importFileInput.click());
+importFileInput.addEventListener('change', onImportFile);
+
+async function onImportFile() {
+  const file = importFileInput.files && importFileInput.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error('Die Datei ist kein gültiges JSON.');
+    }
+    const result = await api.importProject(data);
+    await loadProjects();
+    alert(`Importiert: „${result.project.name}" mit ${result.ticketCount} Ticket(s) als neues Projekt.`);
+  } catch (err) {
+    alert('Import fehlgeschlagen: ' + err.message);
+  } finally {
+    importFileInput.value = '';
+  }
+}
+
 function openModal(project) {
   formErrorEl.textContent = '';
   if (project) {
@@ -76,6 +102,7 @@ function renderProjects(projects) {
       <p class="pdesc"></p>
       <div class="pactions">
         <button class="edit-btn">Bearbeiten</button>
+        <button class="export-btn">Exportieren</button>
         <button class="btn-danger delete-btn">Löschen</button>
       </div>
     `;
@@ -88,6 +115,10 @@ function renderProjects(projects) {
     card.querySelector('.edit-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       openModal(project);
+    });
+    card.querySelector('.export-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.location.href = api.exportProjectUrl(project.id);
     });
     card.querySelector('.delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();
