@@ -20,8 +20,8 @@ const MODELS = [
   { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 – günstig & schnell', provider: 'anthropic' },
   { id: 'claude-sonnet-5', label: 'Claude Sonnet 5 – ausgewogen', provider: 'anthropic', effort: 'low' },
   { id: 'claude-opus-5', label: 'Claude Opus 5 – am stärksten', provider: 'anthropic', effort: 'low' },
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash – günstig & schnell', provider: 'google' },
-  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro – stark', provider: 'google' },
+  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash – günstig & schnell', provider: 'google' },
+  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro – stark (Billing im Google-Projekt nötig)', provider: 'google' },
   { id: 'gpt-4o-mini', label: 'GPT-4o mini – günstig', provider: 'openai' },
   { id: 'gpt-4o', label: 'GPT-4o – stark', provider: 'openai' },
 ];

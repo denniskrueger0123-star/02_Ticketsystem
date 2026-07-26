@@ -67,8 +67,20 @@ serverseitig in die passende Datei (`api-key.txt`, `gemini-key.txt`,
 | Anbieter | Modelle (günstig → stark) | Key-Datei | API-Key bekommst du bei |
 |----------|---------------------------|-----------|-------------------------|
 | Claude (Anthropic) | Haiku 4.5 · Sonnet 5 · Opus 5 | `api-key.txt` | console.anthropic.com |
-| Google Gemini | 2.5 Flash · 2.5 Pro | `gemini-key.txt` | aistudio.google.com (kostenloser Tarif) |
+| Google Gemini | 3.6 Flash · 2.5 Pro | `gemini-key.txt` | aistudio.google.com (kostenloser Tarif) |
 | OpenAI (ChatGPT) | GPT-4o mini · GPT-4o | `openai-key.txt` | platform.openai.com (pay-per-use) |
+
+**Wichtig zu Gemini Pro:** Google setzt für manche Modelle (z. B. 2.5 Pro) das
+kostenlose Kontingent auf 0, solange kein Billing-Konto mit dem
+Google-Cloud-Projekt verknüpft ist. Fix: console.cloud.google.com → Projekt →
+Billing → Zahlungsmethode hinterlegen. Der kostenlose Tarif bleibt dabei
+kostenlos, wird aber erst durch die Verknüpfung freigeschaltet. Gemini 3.6
+Flash läuft normalerweise auch ohne Billing.
+
+**Ein Key deckt alle Modelle eines Anbieters ab** – du brauchst nicht mehrere
+Keys pro Anbieter für z. B. Flash und Pro oder Haiku und Opus. Die
+Modellwahl im Dropdown steuert, welches Modell mit demselben Key
+angesprochen wird.
 
 **Wichtig:** Ein ChatGPT-/Gemini-*Abo* ist **nicht** dasselbe wie ein API-Key.
 Für das Tool brauchst du je Anbieter einen eigenen API-Key (siehe Spalte oben).
