@@ -175,11 +175,13 @@ button:hover {
 .badge-status-Offen { color: var(--accent); border-color: var(--accent); }
 .badge-status-In-Arbeit { color: #d29922; border-color: #d29922; }
 .badge-status-Erledigt { color: var(--success); border-color: var(--success); }
+.badge-status-Zurückgestellt { color: var(--danger); border-color: var(--danger); }
 
-.badge-sev-Niedrig { color: var(--text-muted); }
-.badge-sev-Mittel { color: #d29922; border-color: #d29922; }
-.badge-sev-Hoch { color: #f0883e; border-color: #f0883e; }
 .badge-sev-Kritisch { color: var(--danger); border-color: var(--danger); }
+.badge-sev-Hoch { color: #f0883e; border-color: #f0883e; }
+.badge-sev-Mittel { color: #d29922; border-color: #d29922; }
+.badge-sev-Klein { color: var(--success); border-color: var(--success); }
+.badge-sev-Recherche { color: var(--text-muted); }
 
 .card-actions {
   margin-left: auto;

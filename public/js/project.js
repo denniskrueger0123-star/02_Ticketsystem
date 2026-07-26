@@ -41,8 +41,8 @@ function openModal(ticket) {
     idInput.value = ticket.id;
     titelInput.value = ticket.titel;
     beschreibungInput.value = ticket.beschreibung || '';
-    kategorieInput.value = ticket.kategorie || 'Bug';
-    schweregradInput.value = ticket.schweregrad || 'Niedrig';
+    kategorieInput.value = ticket.kategorie || 'Frontend';
+    schweregradInput.value = ticket.schweregrad || 'Mittel';
     statusInput.value = ticket.status || 'Offen';
     promptInput.value = ticket.claudePrompt || '';
   } else {
@@ -50,8 +50,8 @@ function openModal(ticket) {
     idInput.value = '';
     titelInput.value = '';
     beschreibungInput.value = '';
-    kategorieInput.value = 'Bug';
-    schweregradInput.value = 'Niedrig';
+    kategorieInput.value = 'Frontend';
+    schweregradInput.value = 'Mittel';
     statusInput.value = 'Offen';
     promptInput.value = '';
   }

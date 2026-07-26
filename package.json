@@ -4,7 +4,8 @@
   "description": "Lokales IT-Ideenforum / Projekt-Ticket-Dashboard",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "seed": "node scripts/seed.js"
   },
   "dependencies": {
     "express": "^4.19.2"
