@@ -63,19 +63,17 @@ function renderProjects(projects) {
   }
   for (const project of projects) {
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'project-card';
     card.innerHTML = `
-      <h3 class="card-title"></h3>
-      <p class="card-desc"></p>
-      <div class="card-meta">
-        <span class="card-actions">
-          <button class="edit-btn">Bearbeiten</button>
-          <button class="btn-danger delete-btn">Löschen</button>
-        </span>
+      <h3></h3>
+      <p class="pdesc"></p>
+      <div class="pactions">
+        <button class="edit-btn">Bearbeiten</button>
+        <button class="btn-danger delete-btn">Löschen</button>
       </div>
     `;
-    card.querySelector('.card-title').textContent = project.name;
-    card.querySelector('.card-desc').textContent = project.description || '';
+    card.querySelector('h3').textContent = project.name;
+    card.querySelector('.pdesc').textContent = project.description || '';
 
     card.addEventListener('click', () => {
       window.location.href = `project.html?id=${encodeURIComponent(project.id)}`;

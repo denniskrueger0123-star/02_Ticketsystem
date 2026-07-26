@@ -47,4 +47,7 @@ const api = {
   deleteTicket(projectId, ticketId) {
     return this.request('DELETE', `/api/projects/${projectId}/tickets/${ticketId}`);
   },
+  generatePrompt(projectId, ticketId) {
+    return this.request('POST', `/api/projects/${projectId}/tickets/${ticketId}/generate-prompt`);
+  },
 };

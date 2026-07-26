@@ -8,44 +8,65 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <header>
-    <h1 id="project-title">Projekt</h1>
-    <a href="index.html">&larr; Alle Projekte</a>
-  </header>
-
-  <main>
-    <p id="project-description" class="project-desc"></p>
-
-    <div class="toolbar">
-      <div class="filters">
-        <select id="filter-kategorie">
-          <option value="">Alle Kategorien</option>
-          <option value="Frontend">Frontend</option>
-          <option value="Backend">Backend</option>
-          <option value="Infrastruktur">Infrastruktur</option>
-          <option value="Prozess">Prozess</option>
-        </select>
-        <select id="filter-schweregrad">
-          <option value="">Alle Schweregrade</option>
-          <option value="Kritisch">Kritisch</option>
-          <option value="Hoch">Hoch</option>
-          <option value="Mittel">Mittel</option>
-          <option value="Klein">Klein</option>
-          <option value="Recherche">Recherche</option>
-        </select>
-        <select id="filter-status">
-          <option value="">Alle Status</option>
-          <option value="Offen">Offen</option>
-          <option value="In Arbeit">In Arbeit</option>
-          <option value="Erledigt">Erledigt</option>
-          <option value="Zurückgestellt">Zurückgestellt</option>
-        </select>
+  <div class="masthead">
+    <div class="inner">
+      <div class="topbar">
+        <p class="eyebrow">Ideensammlung als Ticketsystem</p>
+        <a class="back" href="index.html">&larr; Alle Projekte</a>
       </div>
-      <button id="new-ticket-btn" class="btn-primary">+ Neues Ticket</button>
+      <h1 id="project-title">Projekt</h1>
+      <p class="sub" id="project-sub"></p>
     </div>
+  </div>
 
-    <div id="ticket-list" class="card-list"></div>
-  </main>
+  <div class="stats"><div class="inner" id="stats"></div></div>
+
+  <div class="filterbar">
+    <div class="inner">
+      <div class="filterrow">
+        <span class="fr-label">Kategorie</span>
+        <button class="chip active" data-dim="cat" data-val="all">Alle</button>
+        <button class="chip" data-dim="cat" data-val="Frontend">Frontend</button>
+        <button class="chip" data-dim="cat" data-val="Backend">Backend</button>
+        <button class="chip" data-dim="cat" data-val="Infrastruktur">Infrastruktur</button>
+        <button class="chip" data-dim="cat" data-val="Prozess">Prozess</button>
+        <button class="btn-primary" id="new-ticket-btn" style="margin-left:auto;">+ Neues Ticket</button>
+      </div>
+      <div class="filterrow">
+        <span class="fr-label">Schweregrad</span>
+        <button class="chip active" data-dim="sev" data-val="all">Alle</button>
+        <button class="chip" data-dim="sev" data-val="Kritisch">Kritisch</button>
+        <button class="chip" data-dim="sev" data-val="Hoch">Hoch</button>
+        <button class="chip" data-dim="sev" data-val="Mittel">Mittel</button>
+        <button class="chip" data-dim="sev" data-val="Klein">Klein</button>
+        <button class="chip" data-dim="sev" data-val="Recherche">Recherche</button>
+      </div>
+      <div class="filterrow">
+        <span class="fr-label">Status</span>
+        <button class="chip active" data-dim="st" data-val="all">Alle</button>
+        <button class="chip" data-dim="st" data-val="Offen">Offen</button>
+        <button class="chip" data-dim="st" data-val="In Arbeit">In Arbeit</button>
+        <button class="chip" data-dim="st" data-val="Erledigt">Erledigt</button>
+        <button class="chip" data-dim="st" data-val="Zurückgestellt">Zurückgestellt</button>
+        <span class="filter-counter" id="counter"></span>
+      </div>
+    </div>
+  </div>
+
+  <section class="overview">
+    <h2>Übersicht</h2>
+    <p class="hint">Klick auf eine Zeile springt zur Detailkarte weiter unten. Filter oben schränken Übersicht UND Detailkarten gemeinsam ein.</p>
+    <div class="ovw-scroll">
+      <table class="ovw">
+        <thead><tr><th>Nr.</th><th>Titel</th><th>Kategorie</th><th>Schweregrad</th><th>Status</th></tr></thead>
+        <tbody id="ovw-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="detail-wrap" id="detail-wrap"></div>
+
+  <footer class="pagefoot" id="pagefoot"></footer>
 
   <div id="ticket-modal" class="modal-overlay hidden">
     <div class="modal">
@@ -58,7 +79,7 @@
         </div>
         <div class="form-group">
           <label for="ticket-beschreibung">Beschreibung</label>
-          <textarea id="ticket-beschreibung" rows="3"></textarea>
+          <textarea id="ticket-beschreibung" rows="4"></textarea>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -89,10 +110,6 @@
               <option value="Zurückgestellt">Zurückgestellt</option>
             </select>
           </div>
-        </div>
-        <div class="form-group">
-          <label for="ticket-prompt">Claude-Code-Prompt (manuell)</label>
-          <textarea id="ticket-prompt" rows="5" placeholder="Hier später den Prompt für Claude Code eintragen..."></textarea>
         </div>
         <div class="error-text" id="ticket-form-error"></div>
         <div class="modal-actions">

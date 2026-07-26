@@ -1,5 +1,6 @@
 const express = require('express');
 const storage = require('../lib/storage');
+const { generatePrompt } = require('../lib/llm');
 
 const router = express.Router({ mergeParams: true });
 
@@ -39,6 +40,25 @@ router.delete('/:ticketId', async (req, res) => {
   const deleted = await storage.deleteTicket(req.params.projectId, req.params.ticketId);
   if (!deleted) return res.status(404).json({ error: 'Ticket nicht gefunden' });
   res.status(204).end();
+});
+
+// Ausbaustufe 4: Prompt serverseitig per LLM-API generieren und im Ticket speichern.
+router.post('/:ticketId/generate-prompt', async (req, res) => {
+  const project = await storage.getProject(req.params.projectId);
+  if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+  const ticket = await storage.getTicket(req.params.projectId, req.params.ticketId);
+  if (!ticket) return res.status(404).json({ error: 'Ticket nicht gefunden' });
+
+  try {
+    const claudePrompt = await generatePrompt({ project, ticket });
+    const updated = await storage.updateTicket(req.params.projectId, req.params.ticketId, {
+      claudePrompt,
+    });
+    res.json(updated);
+  } catch (err) {
+    const status = err.code === 'NO_KEY' ? 501 : 502;
+    res.status(status).json({ error: err.message, code: err.code || 'API_ERROR' });
+  }
 });
 
 module.exports = router;
