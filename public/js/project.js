@@ -23,6 +23,7 @@ const beschreibungInput = document.getElementById('ticket-beschreibung');
 const kategorieInput = document.getElementById('ticket-kategorie');
 const schweregradInput = document.getElementById('ticket-schweregrad');
 const statusInput = document.getElementById('ticket-status');
+const bmInput = document.getElementById('ticket-bm');
 const formErrorEl = document.getElementById('ticket-form-error');
 
 // Projekt-Anweisungen (Skill) Modal
@@ -31,9 +32,16 @@ const projectEditFormEl = document.getElementById('project-edit-form');
 const peSkillInput = document.getElementById('pe-skill');
 const projectEditErrorEl = document.getElementById('project-edit-error');
 
+// Boss Move Modal
+const bmModalEl = document.getElementById('bm-modal');
+const bmCountEl = document.getElementById('bm-count');
+const bmSkillInput = document.getElementById('bm-skill');
+const bmOutputInput = document.getElementById('bm-output');
+const bmHintEl = document.getElementById('bm-hint');
+
 let projectData = null;
 let allTickets = [];
-const state = { cat: 'all', sev: 'all', st: 'all' };
+const state = { cat: 'all', sev: 'all', st: 'all', bm: 'all' };
 let cards = []; // { ticket, cardEl, rowEl, severity }
 
 document.getElementById('new-ticket-btn').addEventListener('click', () => openModal());
@@ -66,6 +74,88 @@ async function onProjectEditSubmit(e) {
     projectEditErrorEl.textContent = err.message;
   }
 }
+
+// ── Boss Move ───────────────────────────────────────────────────────
+document.getElementById('bm-open-btn').addEventListener('click', openBmModal);
+document.getElementById('bm-close-btn').addEventListener('click', () => bmModalEl.classList.add('hidden'));
+document.getElementById('bm-skill-save-btn').addEventListener('click', saveBmSkill);
+document.getElementById('bm-generate-btn').addEventListener('click', generateBmPrompt);
+document.getElementById('bm-copy-btn').addEventListener('click', copyBmPrompt);
+
+function bmTicketCount() {
+  return allTickets.filter((t) => t.bmStatus === true).length;
+}
+
+function updateBmCount() {
+  const n = bmTicketCount();
+  const btn = document.getElementById('bm-open-btn');
+  if (btn) btn.textContent = n > 0 ? `🟢 Boss Move (${n})` : '🟢 Boss Move';
+  if (bmCountEl) {
+    bmCountEl.textContent = n > 0
+      ? `${n} Ticket(s) sind grün markiert und werden zusammengeführt.`
+      : 'Noch keine Tickets grün markiert – markiere Tickets über den BM-Schalter, um sie einzubeziehen.';
+  }
+}
+
+function openBmModal() {
+  bmHintEl.className = 'prompt-hint';
+  bmHintEl.textContent = '';
+  bmSkillInput.value = projectData.bmPromptSkill || '';
+  bmOutputInput.value = projectData.bmPrompt || '';
+  updateBmCount();
+  bmModalEl.classList.remove('hidden');
+  bmSkillInput.focus();
+}
+
+async function saveBmSkill() {
+  bmHintEl.className = 'prompt-hint';
+  bmHintEl.textContent = 'Speichere…';
+  try {
+    projectData = await api.updateProject(projectId, { bmPromptSkill: bmSkillInput.value.trim() });
+    bmHintEl.className = 'prompt-hint ok';
+    bmHintEl.textContent = 'Anweisung gespeichert ✓';
+  } catch (err) {
+    bmHintEl.className = 'prompt-hint error';
+    bmHintEl.textContent = err.message;
+  }
+}
+
+async function generateBmPrompt() {
+  if (bmTicketCount() === 0) {
+    bmHintEl.className = 'prompt-hint error';
+    bmHintEl.textContent = 'Keine Tickets grün markiert.';
+    return;
+  }
+  const genBtn = document.getElementById('bm-generate-btn');
+  bmHintEl.className = 'prompt-hint';
+  bmHintEl.textContent = 'Generiere Super-Prompt… (kann einen Moment dauern)';
+  genBtn.disabled = true;
+  try {
+    // Erst die separate BM-Anweisung speichern, damit sie serverseitig einfließt.
+    projectData = await api.updateProject(projectId, { bmPromptSkill: bmSkillInput.value.trim() });
+    const result = await api.generateBmPrompt(projectId, modelSelect.value);
+    projectData.bmPrompt = result.bmPrompt;
+    bmOutputInput.value = result.bmPrompt;
+    bmHintEl.className = 'prompt-hint ok';
+    bmHintEl.textContent = `Aus ${result.ticketCount} Ticket(s) generiert ✓`;
+  } catch (err) {
+    bmHintEl.className = 'prompt-hint error';
+    bmHintEl.textContent = err.message;
+  } finally {
+    genBtn.disabled = false;
+  }
+}
+
+async function copyBmPrompt() {
+  try {
+    await navigator.clipboard.writeText(bmOutputInput.value);
+    bmHintEl.className = 'prompt-hint ok';
+    bmHintEl.textContent = 'Kopiert ✓';
+  } catch (err) {
+    bmHintEl.className = 'prompt-hint error';
+    bmHintEl.textContent = 'Kopieren fehlgeschlagen';
+  }
+}
 document.querySelectorAll('.chip').forEach((chip) => {
   chip.addEventListener('click', () => {
     const dim = chip.dataset.dim;
@@ -88,7 +178,8 @@ function matches(t) {
   return (
     (state.cat === 'all' || t.kategorie === state.cat) &&
     (state.sev === 'all' || t.schweregrad === state.sev) &&
-    (state.st === 'all' || t.status === state.st)
+    (state.st === 'all' || t.status === state.st) &&
+    (state.bm === 'all' || (state.bm === 'yes' ? t.bmStatus === true : t.bmStatus !== true))
   );
 }
 
@@ -133,7 +224,13 @@ function render() {
     tdSev.appendChild(makeTag(`tag-sev-${t.schweregrad}`, t.schweregrad));
     const tdSt = document.createElement('td');
     tdSt.appendChild(makeTag(`tag-st-${slug(t.status)}`, t.status));
-    tr.append(tdNum, tdTitle, tdCat, tdSev, tdSt);
+    const tdBm = document.createElement('td');
+    tdBm.className = 'bm-cell';
+    const bmDot = document.createElement('span');
+    bmDot.className = 'bm-dot' + (t.bmStatus ? ' on' : '');
+    bmDot.title = t.bmStatus ? 'Boss Move: grün' : 'nicht markiert';
+    tdBm.appendChild(bmDot);
+    tr.append(tdNum, tdTitle, tdCat, tdSev, tdSt, tdBm);
     tr.addEventListener('click', () => {
       const el = document.getElementById(`card-${t.id}`);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -173,6 +270,7 @@ function render() {
 
   footEl.textContent = `${projectData.name} · Ideensammlung als Ticketsystem`;
   applyFilters();
+  updateBmCount();
 }
 
 function makeTag(cls, text) {
@@ -204,6 +302,11 @@ function buildCard(t) {
   const tr = tagRow(t);
   const actions = document.createElement('div');
   actions.className = 'card-actions';
+  const bmBtn = document.createElement('button');
+  bmBtn.className = 'bm-toggle' + (t.bmStatus ? ' on' : '');
+  bmBtn.textContent = t.bmStatus ? '🟢 BM' : '⚪ BM';
+  bmBtn.title = 'Boss-Move-Status umschalten';
+  bmBtn.addEventListener('click', () => toggleBm(t, bmBtn));
   const editBtn = document.createElement('button');
   editBtn.textContent = 'Bearbeiten';
   editBtn.addEventListener('click', () => openModal(t));
@@ -211,7 +314,7 @@ function buildCard(t) {
   delBtn.className = 'btn-danger';
   delBtn.textContent = 'Löschen';
   delBtn.addEventListener('click', () => deleteTicket(t));
-  actions.append(editBtn, delBtn);
+  actions.append(bmBtn, editBtn, delBtn);
   tr.appendChild(actions);
   card.appendChild(tr);
 
@@ -254,6 +357,32 @@ function buildCard(t) {
   card.appendChild(box);
 
   return card;
+}
+
+async function toggleBm(t, btn) {
+  const next = !t.bmStatus;
+  btn.disabled = true;
+  try {
+    const updated = await api.updateTicket(projectId, t.id, { bmStatus: next });
+    t.bmStatus = updated.bmStatus === true;
+    btn.className = 'bm-toggle' + (t.bmStatus ? ' on' : '');
+    btn.textContent = t.bmStatus ? '🟢 BM' : '⚪ BM';
+    // Übersichtstabellen-Punkt aktualisieren
+    const entry = cards.find((c) => c.ticket.id === t.id);
+    if (entry && entry.rowEl) {
+      const dot = entry.rowEl.querySelector('.bm-dot');
+      if (dot) {
+        dot.classList.toggle('on', t.bmStatus);
+        dot.title = t.bmStatus ? 'Boss Move: grün' : 'nicht markiert';
+      }
+    }
+    updateBmCount();
+    applyFilters();
+  } catch (err) {
+    alert('Konnte BM-Status nicht speichern: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ── Filter ──────────────────────────────────────────────────────────
@@ -366,6 +495,7 @@ function openModal(t) {
     kategorieInput.value = t.kategorie || 'Frontend';
     schweregradInput.value = t.schweregrad || 'Mittel';
     statusInput.value = t.status || 'Offen';
+    bmInput.checked = t.bmStatus === true;
   } else {
     modalTitleEl.textContent = 'Neues Ticket';
     idInput.value = '';
@@ -374,6 +504,7 @@ function openModal(t) {
     kategorieInput.value = 'Frontend';
     schweregradInput.value = 'Mittel';
     statusInput.value = 'Offen';
+    bmInput.checked = false;
   }
   modalEl.classList.remove('hidden');
   titelInput.focus();
@@ -391,6 +522,7 @@ async function onSubmit(e) {
     kategorie: kategorieInput.value,
     schweregrad: schweregradInput.value,
     status: statusInput.value,
+    bmStatus: bmInput.checked,
   };
   try {
     if (idInput.value) {

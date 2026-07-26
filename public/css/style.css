@@ -287,3 +287,19 @@ footer.pagefoot { padding: 30px 24px 10px; color: var(--ink-soft); font-size: 8p
 }
 .gear-link:hover { color: #fff; border: none; }
 .field-hint { font-size: 8pt; color: var(--ink-soft); margin: 4px 0 0; }
+
+/* ── Boss Move (BM) ───────────────────────────────────────────────── */
+.chip[data-dim="bm"][data-val="yes"].active { background: var(--st-done); }
+.chip[data-dim="bm"][data-val="no"].active  { background: var(--ink-soft); }
+.bm-cell { text-align: center; }
+.bm-dot {
+  display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  background: transparent; border: 1.5px solid var(--line);
+}
+.bm-dot.on { background: var(--st-done); border-color: var(--st-done); }
+.bm-toggle { font-weight: 800; }
+.bm-toggle.on { background: var(--st-done); border-color: var(--st-done); color: #fff; }
+.bm-toggle.on:hover { background: #128a3e; border-color: #128a3e; color: #fff; }
+.modal-wide { max-width: 760px; }
+.checkline { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 9.2pt; font-weight: 600; color: var(--ink); cursor: pointer; }
+.checkline input { width: auto; }

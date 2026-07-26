@@ -37,6 +37,18 @@ const SYSTEM_PROMPT =
   'fertigen Prompt-Text aus – keine Einleitung, keine Erklärung, keine ' +
   'Code-Blöcke oder Anführungszeichen drumherum.';
 
+const BM_SYSTEM_PROMPT =
+  'Du bist ein Assistent, der aus MEHREREN zusammengehörigen Tickets EINEN ' +
+  'einzigen, übergreifenden Prompt für Claude Code (ein KI-Coding-Tool) ' +
+  'formuliert – einen sogenannten "Super-Prompt". Fasse die Tickets zu einem ' +
+  'stimmigen Gesamtauftrag zusammen: erkenne gemeinsame Themen und ' +
+  'Abhängigkeiten, leite eine sinnvolle Reihenfolge ab und vermeide ' +
+  'Wiederholungen. Schreibe den Prompt auf Deutsch, in der zweiten Person ' +
+  '("Implementiere...", "Analysiere..."). Er soll konkret genug sein, dass ein ' +
+  'Entwickler-Agent die Tickets gemeinsam abarbeiten kann. Gib AUSSCHLIESSLICH ' +
+  'den fertigen Prompt-Text aus – keine Einleitung, keine Erklärung, keine ' +
+  'Code-Blöcke oder Anführungszeichen drumherum.';
+
 class LlmError extends Error {
   constructor(message, code) {
     super(message);
@@ -132,6 +144,25 @@ function buildUserContent(project, ticket) {
   );
 }
 
+function buildBossMoveContent(project, tickets) {
+  const header =
+    `Projekt: ${project.name}\n` +
+    (project.description ? `Projektbeschreibung: ${project.description}\n` : '') +
+    `\nEs folgen ${tickets.length} zusammengehörige Tickets (Boss Move). ` +
+    'Formuliere daraus EINEN übergreifenden Super-Prompt.\n';
+  const blocks = tickets
+    .map((t, i) => {
+      return (
+        `\n─── Ticket ${i + 1} ───\n` +
+        `Titel: ${t.titel}\n` +
+        `Kategorie: ${t.kategorie} · Schweregrad: ${t.schweregrad} · Status: ${t.status}\n` +
+        `Beschreibung:\n${t.beschreibung || '(keine Beschreibung vorhanden)'}\n`
+      );
+    })
+    .join('');
+  return header + blocks;
+}
+
 // ── Anbieter-spezifische Aufrufe ────────────────────────────────────
 async function callAnthropic(model, key, system, user) {
   const client = new Anthropic({ apiKey: key });
@@ -225,8 +256,47 @@ async function generatePrompt({ project, ticket, modelId }) {
   return text;
 }
 
+// Erzeugt EINEN Super-Prompt aus mehreren (Boss-Move-)Tickets. Nutzt eine
+// eigene System-Anweisung und die projektweite BM-KI-Anweisung, unabhängig von
+// der normalen promptSkill.
+async function generateBossMovePrompt({ project, tickets, modelId }) {
+  if (!Array.isArray(tickets) || tickets.length === 0) {
+    throw new LlmError('Keine Tickets im Boss-Move-Status (grün) markiert.', 'NO_TICKETS');
+  }
+
+  const model = MODELS.find((m) => m.id === (modelId || DEFAULT_MODEL)) || MODELS.find((m) => m.id === DEFAULT_MODEL);
+  if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
+
+  const key = resolveKey(model.provider);
+  if (!key) {
+    const cfg = PROVIDERS[model.provider];
+    throw new LlmError(
+      `Kein API-Key für ${cfg.label}. Lege die Datei "${cfg.keyFile}" im Projektordner an ` +
+        `und trage deinen API-Key hinein (oder setze die Umgebungsvariable ${cfg.keyEnv}).`,
+      'NO_KEY'
+    );
+  }
+
+  const system = project.bmPromptSkill
+    ? `${BM_SYSTEM_PROMPT}\n\nZusätzliche Anweisungen für diesen Super-Prompt (unbedingt beachten):\n${project.bmPromptSkill}`
+    : BM_SYSTEM_PROMPT;
+  const user = buildBossMoveContent(project, tickets);
+
+  let text;
+  try {
+    text = (await CALLERS[model.provider](model, key, system, user)).trim();
+  } catch (err) {
+    if (err instanceof LlmError) throw err;
+    throw new LlmError(`LLM-Aufruf fehlgeschlagen: ${err.message}`, 'API_ERROR');
+  }
+
+  if (!text) throw new LlmError('Das Modell hat keinen Text zurückgegeben.', 'EMPTY');
+  return text;
+}
+
 module.exports = {
   generatePrompt,
+  generateBossMovePrompt,
   listModels,
   providerStatus,
   settingsStatus,

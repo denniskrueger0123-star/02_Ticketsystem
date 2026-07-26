@@ -13,6 +13,7 @@
       <div class="topbar">
         <p class="eyebrow">Ideensammlung als Ticketsystem</p>
         <span class="topbar-links">
+          <button class="gear-link back" id="bm-open-btn" type="button">🟢 Boss Move</button>
           <button class="gear-link back" id="export-project-btn" type="button">⭳ Export</button>
           <button class="gear-link back" id="edit-project-btn" type="button">✏ KI-Anweisungen</button>
           <a class="gear-link back" href="settings.html">⚙ Einstellungen</a>
@@ -59,6 +60,12 @@
         <button class="chip" data-dim="st" data-val="Zurückgestellt">Zurückgestellt</button>
         <span class="filter-counter" id="counter"></span>
       </div>
+      <div class="filterrow">
+        <span class="fr-label">BM Status</span>
+        <button class="chip active" data-dim="bm" data-val="all">Alle</button>
+        <button class="chip" data-dim="bm" data-val="yes">🟢 Grün</button>
+        <button class="chip" data-dim="bm" data-val="no">— Nicht</button>
+      </div>
     </div>
   </div>
 
@@ -67,7 +74,7 @@
     <p class="hint">Klick auf eine Zeile springt zur Detailkarte weiter unten. Filter oben schränken Übersicht UND Detailkarten gemeinsam ein.</p>
     <div class="ovw-scroll">
       <table class="ovw">
-        <thead><tr><th>Nr.</th><th>Titel</th><th>Kategorie</th><th>Schweregrad</th><th>Status</th></tr></thead>
+        <thead><tr><th>Nr.</th><th>Titel</th><th>Kategorie</th><th>Schweregrad</th><th>Status</th><th>BM</th></tr></thead>
         <tbody id="ovw-body"></tbody>
       </table>
     </div>
@@ -120,12 +127,40 @@
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label class="checkline"><input type="checkbox" id="ticket-bm" /> 🟢 Boss-Move-Status (grün) – in Super-Prompt einbeziehen</label>
+        </div>
         <div class="error-text" id="ticket-form-error"></div>
         <div class="modal-actions">
           <button type="button" id="ticket-cancel-btn">Abbrechen</button>
           <button type="submit" class="btn-primary">Speichern</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="bm-modal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h2>🟢 Boss Move – Super-Prompt</h2>
+      <p class="field-hint" id="bm-count" style="margin-top:-8px; margin-bottom:14px;"></p>
+      <div class="form-group">
+        <label for="bm-skill">Separate KI-Anweisung für den Super-Prompt</label>
+        <textarea id="bm-skill" rows="3" placeholder="z. B. „Fasse die Tickets als ein Epic zusammen und priorisiere nach Abhängigkeiten.“"></textarea>
+        <p class="field-hint">Unabhängig von den normalen „✏ KI-Anweisungen“. Gilt nur für diesen Boss-Move-Super-Prompt.</p>
+      </div>
+      <div class="prompt-actions">
+        <button type="button" class="btn-primary" id="bm-generate-btn">✨ Super-Prompt generieren</button>
+        <button type="button" id="bm-skill-save-btn">Anweisung speichern</button>
+        <span class="prompt-hint" id="bm-hint"></span>
+      </div>
+      <div class="form-group" style="margin-top:14px;">
+        <label for="bm-output">Generierter Super-Prompt</label>
+        <textarea id="bm-output" rows="10" placeholder="Hier erscheint der zusammengeführte Super-Prompt aller grün markierten Tickets…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="bm-copy-btn">Kopieren</button>
+        <button type="button" id="bm-close-btn">Schließen</button>
+      </div>
     </div>
   </div>
 

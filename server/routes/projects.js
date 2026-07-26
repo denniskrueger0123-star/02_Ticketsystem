@@ -1,5 +1,6 @@
 const express = require('express');
 const storage = require('../lib/storage');
+const { generateBossMovePrompt } = require('../lib/llm');
 
 const router = express.Router();
 
@@ -48,11 +49,17 @@ router.get('/:projectId/export', async (req, res) => {
 });
 
 router.put('/:projectId', async (req, res) => {
-  const { name, description, promptSkill } = req.body;
+  const { name, description, promptSkill, bmPromptSkill, bmPrompt } = req.body;
   if (name !== undefined && !name.trim()) {
     return res.status(400).json({ error: 'name darf nicht leer sein' });
   }
-  const project = await storage.updateProject(req.params.projectId, { name, description, promptSkill });
+  const project = await storage.updateProject(req.params.projectId, {
+    name,
+    description,
+    promptSkill,
+    bmPromptSkill,
+    bmPrompt,
+  });
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   res.json(project);
 });
@@ -61,6 +68,28 @@ router.delete('/:projectId', async (req, res) => {
   const deleted = await storage.deleteProject(req.params.projectId);
   if (!deleted) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   res.status(204).end();
+});
+
+// Boss Move: aus allen grün markierten Tickets EINEN Super-Prompt generieren
+// und im Projekt (Feld bmPrompt) speichern.
+router.post('/:projectId/bm-prompt', async (req, res) => {
+  const project = await storage.getProject(req.params.projectId);
+  if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+  const tickets = (await storage.listTickets(req.params.projectId)) || [];
+  const bmTickets = tickets.filter((t) => t.bmStatus === true);
+
+  try {
+    const bmPrompt = await generateBossMovePrompt({
+      project,
+      tickets: bmTickets,
+      modelId: req.body && req.body.model,
+    });
+    const updated = await storage.updateProject(req.params.projectId, { bmPrompt });
+    res.json({ bmPrompt: updated.bmPrompt, ticketCount: bmTickets.length });
+  } catch (err) {
+    const status = err.code === 'NO_KEY' ? 501 : err.code === 'NO_TICKETS' ? 400 : 502;
+    res.status(status).json({ error: err.message, code: err.code || 'API_ERROR' });
+  }
 });
 
 module.exports = router;

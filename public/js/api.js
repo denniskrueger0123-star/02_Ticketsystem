@@ -50,6 +50,9 @@ const api = {
   generatePrompt(projectId, ticketId, model) {
     return this.request('POST', `/api/projects/${projectId}/tickets/${ticketId}/generate-prompt`, { model });
   },
+  generateBmPrompt(projectId, model) {
+    return this.request('POST', `/api/projects/${projectId}/bm-prompt`, { model });
+  },
   getModels() {
     return this.request('GET', '/api/models');
   },

@@ -61,7 +61,7 @@ async function getProject(projectId) {
   }
 }
 
-async function createProject({ name, description, promptSkill }) {
+async function createProject({ name, description, promptSkill, bmPromptSkill, bmPrompt }) {
   const id = randomUUID();
   const now = new Date().toISOString();
   const project = {
@@ -69,6 +69,8 @@ async function createProject({ name, description, promptSkill }) {
     name,
     description: description || '',
     promptSkill: promptSkill || '',
+    bmPromptSkill: bmPromptSkill || '',
+    bmPrompt: bmPrompt || '',
     createdAt: now,
     updatedAt: now,
   };
@@ -77,12 +79,14 @@ async function createProject({ name, description, promptSkill }) {
   return project;
 }
 
-async function updateProject(projectId, { name, description, promptSkill }) {
+async function updateProject(projectId, { name, description, promptSkill, bmPromptSkill, bmPrompt }) {
   const project = await getProject(projectId);
   if (!project) return null;
   if (name !== undefined) project.name = name;
   if (description !== undefined) project.description = description;
   if (promptSkill !== undefined) project.promptSkill = promptSkill;
+  if (bmPromptSkill !== undefined) project.bmPromptSkill = bmPromptSkill;
+  if (bmPrompt !== undefined) project.bmPrompt = bmPrompt;
   project.updatedAt = new Date().toISOString();
   await writeJson(projectFile(projectId), project);
   return project;
@@ -137,6 +141,7 @@ async function createTicket(projectId, data) {
     kategorie: data.kategorie || '',
     schweregrad: data.schweregrad || '',
     status: data.status || 'Offen',
+    bmStatus: data.bmStatus === true,
     claudePrompt: data.claudePrompt || '',
     createdAt: now,
     updatedAt: now,
@@ -148,7 +153,7 @@ async function createTicket(projectId, data) {
 async function updateTicket(projectId, ticketId, data) {
   const ticket = await getTicket(projectId, ticketId);
   if (!ticket) return null;
-  const fields = ['titel', 'beschreibung', 'kategorie', 'schweregrad', 'status', 'claudePrompt'];
+  const fields = ['titel', 'beschreibung', 'kategorie', 'schweregrad', 'status', 'bmStatus', 'claudePrompt'];
   for (const field of fields) {
     if (data[field] !== undefined) ticket[field] = data[field];
   }
@@ -185,6 +190,8 @@ async function exportProject(projectId) {
       name: project.name,
       description: project.description || '',
       promptSkill: project.promptSkill || '',
+      bmPromptSkill: project.bmPromptSkill || '',
+      bmPrompt: project.bmPrompt || '',
     },
     tickets: tickets.map((t) => ({
       titel: t.titel || '',
@@ -192,6 +199,7 @@ async function exportProject(projectId) {
       kategorie: t.kategorie || '',
       schweregrad: t.schweregrad || '',
       status: t.status || 'Offen',
+      bmStatus: t.bmStatus === true,
       claudePrompt: t.claudePrompt || '',
     })),
   };
@@ -217,6 +225,8 @@ async function importProject(data) {
     name,
     description: src.description || '',
     promptSkill: src.promptSkill || '',
+    bmPromptSkill: src.bmPromptSkill || '',
+    bmPrompt: src.bmPrompt || '',
   });
 
   let ticketCount = 0;
@@ -228,6 +238,7 @@ async function importProject(data) {
       kategorie: t.kategorie || t.category || '',
       schweregrad: t.schweregrad || t.severity || '',
       status: t.status || 'Offen',
+      bmStatus: t.bmStatus === true,
       claudePrompt: t.claudePrompt || t.prompt || '',
     });
     ticketCount++;

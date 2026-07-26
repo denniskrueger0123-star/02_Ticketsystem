@@ -110,6 +110,24 @@ Prompt-Generierung in diesem Projekt automatisch an das Modell mitgeschickt –
 zusätzlich zu Titel, Beschreibung, Kategorie, Schweregrad und Status des
 jeweiligen Tickets.
 
+## Boss Move – mehrere Tickets zu einem Super-Prompt bündeln
+
+Manchmal willst du nicht für jedes Ticket einzeln einen Prompt, sondern **einen
+übergreifenden „Super-Prompt"** für mehrere zusammengehörige Tickets. Dafür gibt
+es den **Boss-Move-Status (BM)**:
+
+1. Bei jedem Ticket kannst du den **BM-Schalter** auf grün setzen (Button „🟢 BM"
+   auf der Karte, Checkbox im Bearbeiten-Dialog oder Spalte „BM" in der
+   Übersicht). Über die Filterzeile **„BM Status"** blendest du gezielt die grün
+   markierten Tickets ein.
+2. Oben auf **„🟢 Boss Move"** klicken (zeigt in Klammern, wie viele Tickets
+   markiert sind). Im Dialog hinterlegst du eine **separate KI-Anweisung**, die
+   nur für den Super-Prompt gilt und **unabhängig** von den normalen
+   „✏ KI-Anweisungen" ist.
+3. **„✨ Super-Prompt generieren"** fasst alle grün markierten Tickets zu einem
+   einzigen, stimmigen Prompt zusammen (Modellwahl über dasselbe „KI-Modell"-
+   Dropdown). Das Ergebnis kannst du kopieren; es wird im Projekt gespeichert.
+
 ## Projekte exportieren & importieren
 
 Auf der Startseite hat jede Projektkarte einen Button **„Exportieren"** (auch im
@@ -142,5 +160,5 @@ einem Unterordner `tickets/`, in dem jedes Ticket als eigene `<id>.json` liegt.
 
 `id`, `titel`, `beschreibung`, `kategorie` (Frontend/Backend/Infrastruktur/
 Prozess), `schweregrad` (Kritisch/Hoch/Mittel/Klein/Recherche), `status`
-(Offen/In Arbeit/Erledigt/Zurückgestellt), `claudePrompt` (manuell) sowie
-`createdAt`/`updatedAt`.
+(Offen/In Arbeit/Erledigt/Zurückgestellt), `bmStatus` (Boss-Move-Markierung,
+true/false), `claudePrompt` (manuell) sowie `createdAt`/`updatedAt`.
