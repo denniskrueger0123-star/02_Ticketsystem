@@ -47,20 +47,34 @@ start.bat        Ein-Klick-Start unter Windows
 Jedes Ticket hat ein Feld **„Claude-Code-Prompt"**. Du kannst es entweder
 selbst befüllen (dann auf **Speichern** klicken) oder per Button
 **„✨ Prompt generieren"** automatisch aus Titel und Beschreibung erzeugen
-lassen. Die Generierung läuft **serverseitig** über die Anthropic-API – der
-API-Key liegt niemals im Browser.
+lassen. Oben im Filterbereich wählst du bei **„KI-Modell"** aus, welches
+Modell dafür verwendet wird.
 
-So aktivierst du die Generierung:
+Die Generierung läuft **serverseitig** – der API-Key liegt **niemals im
+Browser** und wird nicht in Git mitgeliefert.
 
-1. Lege im Projektordner eine Datei **`api-key.txt`** an.
-2. Trage dort deinen Anthropic-API-Key hinein (nur den Key, sonst nichts) und speichere.
+### Unterstützte Anbieter & Modelle
+
+| Anbieter | Modelle (günstig → stark) | Key-Datei | API-Key bekommst du bei |
+|----------|---------------------------|-----------|-------------------------|
+| Claude (Anthropic) | Haiku 4.5 · Sonnet 5 · Opus 5 | `api-key.txt` | console.anthropic.com |
+| Google Gemini | 2.5 Flash · 2.5 Pro | `gemini-key.txt` | aistudio.google.com (kostenloser Tarif) |
+| OpenAI (ChatGPT) | GPT-4o mini · GPT-4o | `openai-key.txt` | platform.openai.com (pay-per-use) |
+
+**Wichtig:** Ein ChatGPT-/Gemini-*Abo* ist **nicht** dasselbe wie ein API-Key.
+Für das Tool brauchst du je Anbieter einen eigenen API-Key (siehe Spalte oben).
+
+### So aktivierst du einen Anbieter
+
+1. Lege im Projektordner die passende Key-Datei an (z. B. `gemini-key.txt`).
+2. Trage nur deinen API-Key hinein und speichere.
 3. Server neu starten (`start.bat` schließen und erneut doppelklicken).
 
-Ohne Key funktioniert alles andere normal weiter; nur der Button zeigt dann
-einen Hinweis. Die Datei `api-key.txt` ist von Git ausgeschlossen und wird nicht
-mitgeliefert. Alternativ kann der Key über die Umgebungsvariable
-`ANTHROPIC_API_KEY` gesetzt werden; das Modell lässt sich über `LLM_MODEL`
-überschreiben (Standard: `claude-opus-5`).
+Du kannst mehrere Anbieter parallel einrichten und im Dropdown umschalten.
+Anbieter ohne hinterlegten Key sind im Dropdown mit „(Key fehlt)" markiert; ein
+Klick auf Generieren zeigt dann einen Hinweis, welche Datei fehlt. Alternativ
+lassen sich die Keys über die Umgebungsvariablen `ANTHROPIC_API_KEY`,
+`GEMINI_API_KEY`, `OPENAI_API_KEY` setzen; das Standardmodell über `LLM_MODEL`.
 
 ## Datenhaltung
 

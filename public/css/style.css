@@ -108,6 +108,13 @@ body {
   margin-left: auto; font-size: 8.4pt; font-weight: 700; color: var(--ink-soft);
   background: var(--paper); padding: 3px 12px; border-radius: 20px;
 }
+.ai-picker { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ai-picker label {
+  font-size: 7.6pt; font-weight: 800; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.model-select { width: auto; font-size: 8.4pt; font-weight: 700; padding: 5px 8px; max-width: 240px; }
+.model-select optgroup { font-weight: 800; }
 
 /* ── Badges ───────────────────────────────────────────────────────── */
 .tag {

@@ -1,33 +1,32 @@
 // Serverseitige LLM-Anbindung zum Generieren von Claude-Code-Prompts.
-// Der API-Key liegt NIEMALS im Frontend – er wird hier serverseitig aus der
-// Umgebungsvariable ANTHROPIC_API_KEY oder der Datei api-key.txt gelesen.
+// Unterstützt mehrere Anbieter (Anthropic/Claude, Google Gemini, OpenAI).
+// API-Keys liegen NIEMALS im Frontend – sie werden hier serverseitig aus einer
+// Datei im Projektordner (bzw. einer Umgebungsvariable) gelesen.
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 
-const MODEL = process.env.LLM_MODEL || 'claude-opus-5';
-const KEY_FILE = path.join(__dirname, '..', '..', 'api-key.txt');
+const ROOT = path.join(__dirname, '..', '..');
 
-// Fehler mit Code, damit die Route eine passende Meldung/Statuscode wählen kann.
-class LlmError extends Error {
-  constructor(message, code) {
-    super(message);
-    this.code = code;
-  }
-}
+// ── Anbieter: je ein Key-File + eine Umgebungsvariable ──────────────
+const PROVIDERS = {
+  anthropic: { label: 'Claude (Anthropic)', keyFile: 'api-key.txt', keyEnv: 'ANTHROPIC_API_KEY' },
+  google: { label: 'Google Gemini', keyFile: 'gemini-key.txt', keyEnv: 'GEMINI_API_KEY' },
+  openai: { label: 'OpenAI (ChatGPT)', keyFile: 'openai-key.txt', keyEnv: 'OPENAI_API_KEY' },
+};
 
-function resolveApiKey() {
-  if (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim()) {
-    return process.env.ANTHROPIC_API_KEY.trim();
-  }
-  try {
-    const key = fs.readFileSync(KEY_FILE, 'utf-8').trim();
-    if (key) return key;
-  } catch (err) {
-    if (err.code !== 'ENOENT') throw err;
-  }
-  return null;
-}
+// ── Wählbare Modelle (id = das, was an die jeweilige API geht) ──────
+const MODELS = [
+  { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 – günstig & schnell', provider: 'anthropic' },
+  { id: 'claude-sonnet-5', label: 'Claude Sonnet 5 – ausgewogen', provider: 'anthropic', effort: 'low' },
+  { id: 'claude-opus-5', label: 'Claude Opus 5 – am stärksten', provider: 'anthropic', effort: 'low' },
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash – günstig & schnell', provider: 'google' },
+  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro – stark', provider: 'google' },
+  { id: 'gpt-4o-mini', label: 'GPT-4o mini – günstig', provider: 'openai' },
+  { id: 'gpt-4o', label: 'GPT-4o – stark', provider: 'openai' },
+];
+
+const DEFAULT_MODEL = process.env.LLM_MODEL || 'claude-haiku-4-5';
 
 const SYSTEM_PROMPT =
   'Du bist ein Assistent, der aus Ticket-Beschreibungen präzise, umsetzbare ' +
@@ -38,53 +37,139 @@ const SYSTEM_PROMPT =
   'fertigen Prompt-Text aus – keine Einleitung, keine Erklärung, keine ' +
   'Code-Blöcke oder Anführungszeichen drumherum.';
 
-async function generatePrompt({ project, ticket }) {
-  const apiKey = resolveApiKey();
-  if (!apiKey) {
-    throw new LlmError(
-      'Kein API-Key konfiguriert. Lege eine Datei "api-key.txt" im Projektordner an ' +
-        'und trage deinen Anthropic-API-Key hinein (oder setze die Umgebungsvariable ANTHROPIC_API_KEY).',
-      'NO_KEY'
-    );
+class LlmError extends Error {
+  constructor(message, code) {
+    super(message);
+    this.code = code;
   }
+}
 
-  const client = new Anthropic({ apiKey });
+function resolveKey(provider) {
+  const cfg = PROVIDERS[provider];
+  if (process.env[cfg.keyEnv] && process.env[cfg.keyEnv].trim()) {
+    return process.env[cfg.keyEnv].trim();
+  }
+  try {
+    const key = fs.readFileSync(path.join(ROOT, cfg.keyFile), 'utf-8').trim();
+    if (key) return key;
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+  return null;
+}
 
-  const userContent =
+function listModels() {
+  return MODELS.map((m) => ({ id: m.id, label: m.label, provider: m.provider }));
+}
+
+function providerStatus() {
+  const out = {};
+  for (const [id, cfg] of Object.entries(PROVIDERS)) {
+    out[id] = { label: cfg.label, keyFile: cfg.keyFile, configured: !!resolveKey(id) };
+  }
+  return out;
+}
+
+function buildUserContent(project, ticket) {
+  return (
     `Projekt: ${project.name}\n` +
     (project.description ? `Projektbeschreibung: ${project.description}\n` : '') +
     `\nTicket-Titel: ${ticket.titel}\n` +
     `Kategorie: ${ticket.kategorie} · Schweregrad: ${ticket.schweregrad} · Status: ${ticket.status}\n\n` +
     `Ticket-Beschreibung:\n${ticket.beschreibung || '(keine Beschreibung vorhanden)'}\n\n` +
-    'Formuliere daraus einen Claude-Code-Prompt.';
+    'Formuliere daraus einen Claude-Code-Prompt.'
+  );
+}
 
-  let response;
-  try {
-    response = await client.messages.create({
-      model: MODEL,
+// ── Anbieter-spezifische Aufrufe ────────────────────────────────────
+async function callAnthropic(model, key, system, user) {
+  const client = new Anthropic({ apiKey: key });
+  const req = {
+    model: model.id,
+    max_tokens: 2048,
+    system,
+    messages: [{ role: 'user', content: user }],
+  };
+  if (model.effort) req.output_config = { effort: model.effort };
+  const res = await client.messages.create(req);
+  if (res.stop_reason === 'refusal') {
+    throw new LlmError('Die Anfrage wurde vom Modell abgelehnt.', 'REFUSAL');
+  }
+  return (res.content || [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('');
+}
+
+async function callGemini(model, key, system, user) {
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${encodeURIComponent(key)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { maxOutputTokens: 2048 },
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new LlmError(`Gemini-Fehler: ${data.error?.message || res.statusText}`, 'API_ERROR');
+  }
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  return parts.map((p) => p.text || '').join('');
+}
+
+async function callOpenAI(model, key, system, user) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: model.id,
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      output_config: { effort: 'low' },
-      messages: [{ role: 'user', content: userContent }],
-    });
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new LlmError(`OpenAI-Fehler: ${data.error?.message || res.statusText}`, 'API_ERROR');
+  }
+  return data.choices?.[0]?.message?.content || '';
+}
+
+const CALLERS = { anthropic: callAnthropic, google: callGemini, openai: callOpenAI };
+
+async function generatePrompt({ project, ticket, modelId }) {
+  const model = MODELS.find((m) => m.id === (modelId || DEFAULT_MODEL)) || MODELS.find((m) => m.id === DEFAULT_MODEL);
+  if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
+
+  const key = resolveKey(model.provider);
+  if (!key) {
+    const cfg = PROVIDERS[model.provider];
+    throw new LlmError(
+      `Kein API-Key für ${cfg.label}. Lege die Datei "${cfg.keyFile}" im Projektordner an ` +
+        `und trage deinen API-Key hinein (oder setze die Umgebungsvariable ${cfg.keyEnv}).`,
+      'NO_KEY'
+    );
+  }
+
+  const system = SYSTEM_PROMPT;
+  const user = buildUserContent(project, ticket);
+
+  let text;
+  try {
+    text = (await CALLERS[model.provider](model, key, system, user)).trim();
   } catch (err) {
+    if (err instanceof LlmError) throw err;
     throw new LlmError(`LLM-Aufruf fehlgeschlagen: ${err.message}`, 'API_ERROR');
   }
 
-  if (response.stop_reason === 'refusal') {
-    throw new LlmError('Die Anfrage wurde vom Modell abgelehnt.', 'REFUSAL');
-  }
-
-  const text = (response.content || [])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
-    .join('')
-    .trim();
-
-  if (!text) {
-    throw new LlmError('Das Modell hat keinen Text zurückgegeben.', 'EMPTY');
-  }
+  if (!text) throw new LlmError('Das Modell hat keinen Text zurückgegeben.', 'EMPTY');
   return text;
 }
 
-module.exports = { generatePrompt, LlmError };
+module.exports = { generatePrompt, listModels, providerStatus, LlmError, DEFAULT_MODEL };

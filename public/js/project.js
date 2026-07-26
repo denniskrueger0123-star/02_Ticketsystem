@@ -11,6 +11,7 @@ const ovwBody = document.getElementById('ovw-body');
 const detailWrap = document.getElementById('detail-wrap');
 const counterEl = document.getElementById('counter');
 const footEl = document.getElementById('pagefoot');
+const modelSelect = document.getElementById('model-select');
 
 // Modal
 const modalEl = document.getElementById('ticket-modal');
@@ -308,7 +309,7 @@ async function generate(t, ta, hint, btn) {
   hint.textContent = 'Generiere… (kann einen Moment dauern)';
   btn.disabled = true;
   try {
-    const updated = await api.generatePrompt(projectId, t.id);
+    const updated = await api.generatePrompt(projectId, t.id, modelSelect.value);
     t.claudePrompt = updated.claudePrompt;
     ta.value = updated.claudePrompt;
     hint.className = 'prompt-hint ok';
@@ -392,7 +393,40 @@ async function loadTickets() {
   render();
 }
 
+async function loadModels() {
+  let data;
+  try {
+    data = await api.getModels();
+  } catch (err) {
+    return;
+  }
+  const byProvider = {};
+  data.models.forEach((m) => {
+    (byProvider[m.provider] = byProvider[m.provider] || []).push(m);
+  });
+  modelSelect.innerHTML = '';
+  Object.entries(byProvider).forEach(([provider, models]) => {
+    const info = data.providers[provider] || {};
+    const og = document.createElement('optgroup');
+    og.label = (info.label || provider) + (info.configured ? '' : ' — kein Key');
+    models.forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.label + (info.configured ? '' : ' (Key fehlt)');
+      og.appendChild(opt);
+    });
+    modelSelect.appendChild(og);
+  });
+  const saved = localStorage.getItem('llmModel');
+  const ids = data.models.map((m) => m.id);
+  modelSelect.value = saved && ids.includes(saved) ? saved : data.default;
+  modelSelect.addEventListener('change', () => localStorage.setItem('llmModel', modelSelect.value));
+}
+
 (async () => {
   await loadProject();
-  if (projectData) await loadTickets();
+  if (projectData) {
+    await loadModels();
+    await loadTickets();
+  }
 })();

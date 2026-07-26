@@ -30,7 +30,11 @@
         <button class="chip" data-dim="cat" data-val="Backend">Backend</button>
         <button class="chip" data-dim="cat" data-val="Infrastruktur">Infrastruktur</button>
         <button class="chip" data-dim="cat" data-val="Prozess">Prozess</button>
-        <button class="btn-primary" id="new-ticket-btn" style="margin-left:auto;">+ Neues Ticket</button>
+        <span class="ai-picker">
+          <label for="model-select">KI-Modell</label>
+          <select id="model-select" class="model-select"></select>
+          <button class="btn-primary" id="new-ticket-btn">+ Neues Ticket</button>
+        </span>
       </div>
       <div class="filterrow">
         <span class="fr-label">Schweregrad</span>

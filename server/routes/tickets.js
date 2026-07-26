@@ -50,7 +50,7 @@ router.post('/:ticketId/generate-prompt', async (req, res) => {
   if (!ticket) return res.status(404).json({ error: 'Ticket nicht gefunden' });
 
   try {
-    const claudePrompt = await generatePrompt({ project, ticket });
+    const claudePrompt = await generatePrompt({ project, ticket, modelId: req.body && req.body.model });
     const updated = await storage.updateTicket(req.params.projectId, req.params.ticketId, {
       claudePrompt,
     });
