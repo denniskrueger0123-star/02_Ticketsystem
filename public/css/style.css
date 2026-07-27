@@ -287,6 +287,7 @@ footer.pagefoot { padding: 30px 24px 10px; color: var(--ink-soft); font-size: 8p
 .settings-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .settings-row input { flex: 1 1 220px; min-width: 160px; }
 .settings-hint { display: block; font-size: 8pt; color: var(--ink-soft); margin-top: 6px; min-height: 12px; }
+.settings-sublabel { display: block; font-size: 7.6pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin: 14px 0 6px; }
 .settings-hint.error { color: var(--danger); }
 .settings-hint.ok { color: var(--st-done); }
 .settings-help { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; }

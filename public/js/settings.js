@@ -99,6 +99,53 @@ function buildCard(provider, info) {
 
   row.append(input, toggleBtn, saveBtn, clearBtn);
   card.append(row, hint);
+
+  // ── Modell-Zeile: Modell-ID manuell eintragen ────────────────────
+  const modelLabel = document.createElement('label');
+  modelLabel.className = 'settings-sublabel';
+  modelLabel.textContent = 'Modell (Modell-ID, die an die API geht)';
+
+  const modelRow = document.createElement('div');
+  modelRow.className = 'settings-row';
+  const modelInput = document.createElement('input');
+  modelInput.type = 'text';
+  modelInput.autocomplete = 'off';
+  modelInput.spellcheck = false;
+  modelInput.value = info.model || '';
+  modelInput.placeholder = info.exampleModel ? `z. B. ${info.exampleModel}` : 'Modell-ID eintragen…';
+
+  const modelSaveBtn = document.createElement('button');
+  modelSaveBtn.className = 'btn-primary';
+  modelSaveBtn.textContent = 'Modell speichern';
+
+  const modelClearBtn = document.createElement('button');
+  modelClearBtn.textContent = 'Zurücksetzen';
+  modelClearBtn.disabled = !info.model;
+
+  const modelHint = document.createElement('span');
+  modelHint.className = 'settings-hint';
+  modelHint.textContent = info.model
+    ? `Aktiv: ${info.model} – erscheint im „KI-Modell“-Dropdown.`
+    : 'Optional. Leer = nur die vorgegebenen Modelle nutzen.';
+
+  async function saveModel(value) {
+    modelHint.className = 'settings-hint';
+    modelHint.textContent = 'Speichere…';
+    modelSaveBtn.disabled = true;
+    try {
+      await api.saveSettingModel(provider, value);
+      await loadSettings();
+    } catch (err) {
+      modelHint.className = 'settings-hint error';
+      modelHint.textContent = err.message;
+      modelSaveBtn.disabled = false;
+    }
+  }
+  modelSaveBtn.addEventListener('click', () => saveModel(modelInput.value.trim()));
+  modelClearBtn.addEventListener('click', () => saveModel(''));
+
+  modelRow.append(modelInput, modelSaveBtn, modelClearBtn);
+  card.append(modelLabel, modelRow, modelHint);
   return card;
 }
 

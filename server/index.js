@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
-const { listModels, providerStatus, settingsStatus, saveKey, clearKey, DEFAULT_MODEL, LlmError } = require('./lib/llm');
+const { listModels, providerStatus, settingsStatus, saveKey, clearKey, saveCustomModel, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 
@@ -49,6 +49,20 @@ app.delete('/api/settings/:provider', (req, res) => {
     res.json({ providers: settingsStatus() });
   } catch (err) {
     res.status(500).json({ error: 'Interner Fehler beim Löschen.' });
+  }
+});
+
+// Eigenes Modell pro Anbieter setzen/leeren (leerer Wert = zurücksetzen)
+app.post('/api/settings/:provider/model', (req, res) => {
+  try {
+    saveCustomModel(req.params.provider, req.body.model);
+    res.json({ providers: settingsStatus() });
+  } catch (err) {
+    if (err instanceof LlmError) {
+      res.status(400).json({ error: err.message, code: err.code });
+    } else {
+      res.status(500).json({ error: 'Interner Fehler beim Speichern des Modells.' });
+    }
   }
 });
 

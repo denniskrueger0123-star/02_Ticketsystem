@@ -66,6 +66,9 @@ const api = {
   clearSetting(provider) {
     return this.request('DELETE', `/api/settings/${provider}`);
   },
+  saveSettingModel(provider, model) {
+    return this.request('POST', `/api/settings/${provider}/model`, { model });
+  },
 
   getVersion() {
     return this.request('GET', '/api/version');

@@ -3,3 +3,4 @@ data/
 api-key.txt
 gemini-key.txt
 openai-key.txt
+custom-models.json

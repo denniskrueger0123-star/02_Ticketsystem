@@ -28,6 +28,62 @@ const MODELS = [
 
 const DEFAULT_MODEL = process.env.LLM_MODEL || 'claude-haiku-4-5';
 
+// ── Eigene Modelle: pro Anbieter ein manuell eingetragenes Modell ───
+// Modelle ändern sich häufig; deshalb kann pro Anbieter in den Einstellungen
+// eine eigene Modell-ID hinterlegt werden (Datei custom-models.json).
+const CUSTOM_MODELS_FILE = 'custom-models.json';
+
+function readCustomModels() {
+  let raw;
+  try {
+    raw = fs.readFileSync(path.join(ROOT, CUSTOM_MODELS_FILE), 'utf-8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return {};
+    throw err;
+  }
+  try {
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' && !Array.isArray(obj) ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveCustomModel(provider, modelId) {
+  if (!PROVIDERS[provider]) throw new LlmError('Unbekannter Anbieter.', 'BAD_PROVIDER');
+  const all = readCustomModels();
+  const trimmed = (modelId || '').trim();
+  if (trimmed) all[provider] = trimmed;
+  else delete all[provider];
+  fs.writeFileSync(path.join(ROOT, CUSTOM_MODELS_FILE), JSON.stringify(all, null, 2) + '\n', 'utf-8');
+  return trimmed;
+}
+
+// Eigene Modelle als wählbare Einträge (erscheinen im Dropdown beim Anbieter).
+function customModelEntries() {
+  const all = readCustomModels();
+  const out = [];
+  for (const [provider, id] of Object.entries(all)) {
+    if (PROVIDERS[provider] && id) {
+      out.push({ id, label: `Eigenes Modell: ${id}`, provider, custom: true });
+    }
+  }
+  return out;
+}
+
+// Alle wählbaren Modelle: eigene zuerst, dann die Presets (ohne Dubletten).
+function allModels() {
+  const custom = customModelEntries();
+  const customIds = new Set(custom.map((m) => m.id));
+  return [...custom, ...MODELS.filter((m) => !customIds.has(m.id))];
+}
+
+// Erstes Preset-Modell eines Anbieters – dient als Platzhalter/Beispiel.
+function exampleModelFor(provider) {
+  const m = MODELS.find((x) => x.provider === provider);
+  return m ? m.id : '';
+}
+
 const SYSTEM_PROMPT =
   'Du bist ein Assistent, der aus Ticket-Beschreibungen präzise, umsetzbare ' +
   'Prompts für Claude Code (ein KI-Coding-Tool) formuliert. Schreibe den Prompt ' +
@@ -71,7 +127,7 @@ function resolveKey(provider) {
 }
 
 function listModels() {
-  return MODELS.map((m) => ({ id: m.id, label: m.label, provider: m.provider }));
+  return allModels().map((m) => ({ id: m.id, label: m.label, provider: m.provider, custom: !!m.custom }));
 }
 
 function providerStatus() {
@@ -100,6 +156,7 @@ function readFileKey(provider) {
 
 function settingsStatus() {
   const out = {};
+  const custom = readCustomModels();
   for (const [id, cfg] of Object.entries(PROVIDERS)) {
     const envKey = process.env[cfg.keyEnv] && process.env[cfg.keyEnv].trim();
     const fileKey = readFileKey(id);
@@ -110,6 +167,8 @@ function settingsStatus() {
       configured: !!source,
       source,
       preview: fileKey ? maskKey(fileKey) : '',
+      model: custom[id] || '',
+      exampleModel: exampleModelFor(id),
     };
   }
   return out;
@@ -226,7 +285,8 @@ async function callOpenAI(model, key, system, user) {
 const CALLERS = { anthropic: callAnthropic, google: callGemini, openai: callOpenAI };
 
 async function generatePrompt({ project, ticket, modelId }) {
-  const model = MODELS.find((m) => m.id === (modelId || DEFAULT_MODEL)) || MODELS.find((m) => m.id === DEFAULT_MODEL);
+  const models = allModels();
+  const model = models.find((m) => m.id === (modelId || DEFAULT_MODEL)) || models.find((m) => m.id === DEFAULT_MODEL);
   if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
 
   const key = resolveKey(model.provider);
@@ -264,7 +324,8 @@ async function generateBossMovePrompt({ project, tickets, modelId }) {
     throw new LlmError('Keine Tickets im Boss-Move-Status (grün) markiert.', 'NO_TICKETS');
   }
 
-  const model = MODELS.find((m) => m.id === (modelId || DEFAULT_MODEL)) || MODELS.find((m) => m.id === DEFAULT_MODEL);
+  const models = allModels();
+  const model = models.find((m) => m.id === (modelId || DEFAULT_MODEL)) || models.find((m) => m.id === DEFAULT_MODEL);
   if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
 
   const key = resolveKey(model.provider);
@@ -302,6 +363,7 @@ module.exports = {
   settingsStatus,
   saveKey,
   clearKey,
+  saveCustomModel,
   LlmError,
   DEFAULT_MODEL,
 };

@@ -95,6 +95,16 @@ Für das Tool brauchst du je Anbieter einen eigenen API-Key (siehe Spalte oben).
 2. Trage nur deinen API-Key hinein und speichere.
 3. Server neu starten (`start.bat` schließen und erneut doppelklicken).
 
+### Modell selbst eintragen (Modelle ändern sich)
+
+Anbieter benennen ihre Modelle regelmäßig um. Deshalb kannst du in den
+Einstellungen pro Anbieter neben dem API-Key auch ein **Modell-Feld** ausfüllen
+und dort die aktuelle Modell-ID eintragen (z. B. `gemini-3.6-flash`). Dieses
+eigene Modell erscheint dann im **„KI-Modell"**-Dropdown im Projekt und wird für
+die Generierung verwendet – ganz ohne Code-Änderung. Die vorgegebenen Modelle
+bleiben zusätzlich wählbar. „Zurücksetzen" entfernt das eigene Modell wieder.
+Gespeichert wird es lokal in `custom-models.json` (nicht in Git).
+
 Du kannst mehrere Anbieter parallel einrichten und im Dropdown umschalten.
 Anbieter ohne hinterlegten Key sind im Dropdown mit „(Key fehlt)" markiert; ein
 Klick auf Generieren zeigt dann einen Hinweis, welche Datei fehlt. Alternativ
