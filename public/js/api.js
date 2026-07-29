@@ -72,6 +72,9 @@ const api = {
   saveSettingModel(provider, model) {
     return this.request('POST', `/api/settings/${provider}/model`, { model });
   },
+  fetchProviderModels(provider) {
+    return this.request('POST', `/api/settings/${provider}/fetch-models`);
+  },
   saveSystemPrompt(key, text) {
     return this.request('POST', `/api/settings/system-prompt/${key}`, { text });
   },

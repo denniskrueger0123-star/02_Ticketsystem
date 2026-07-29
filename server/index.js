@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
-const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveCustomModel, DEFAULT_MODEL, LlmError } = require('./lib/llm');
+const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveCustomModel, fetchProviderModels, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 
@@ -63,6 +63,22 @@ app.delete('/api/settings/:provider', (req, res) => {
     res.json({ providers: settingsStatus() });
   } catch (err) {
     res.status(500).json({ error: 'Interner Fehler beim Löschen.' });
+  }
+});
+
+// Modell-Liste eines Anbieters live abrufen und lokal zwischenspeichern.
+// Passiert ausschließlich auf ausdrückliche Anforderung, nie beim App-Start.
+app.post('/api/settings/:provider/fetch-models', async (req, res) => {
+  try {
+    const result = await fetchProviderModels(req.params.provider);
+    res.json({ ...result, providers: settingsStatus() });
+  } catch (err) {
+    if (err instanceof LlmError) {
+      const status = err.code === 'NO_KEY' ? 501 : err.code === 'BAD_PROVIDER' ? 400 : 502;
+      res.status(status).json({ error: err.message, code: err.code });
+    } else {
+      res.status(500).json({ error: 'Interner Fehler beim Modell-Abruf.' });
+    }
   }
 });
 

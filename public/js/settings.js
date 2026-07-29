@@ -122,11 +122,46 @@ function buildCard(provider, info) {
   modelClearBtn.textContent = 'Zurücksetzen';
   modelClearBtn.disabled = !info.model;
 
+  const fetchBtn = document.createElement('button');
+  fetchBtn.textContent = '🔄 Modelle abrufen';
+  fetchBtn.title = 'Verfügbare Modelle direkt beim Anbieter abfragen';
+
   const modelHint = document.createElement('span');
   modelHint.className = 'settings-hint';
   modelHint.textContent = info.model
     ? `Aktiv: ${info.model} – erscheint im „KI-Modell“-Dropdown.`
     : 'Optional. Leer = nur die vorgegebenen Modelle nutzen.';
+
+  const fetchHint = document.createElement('span');
+  fetchHint.className = 'settings-hint';
+  if (info.fetchedCount) {
+    const when = info.fetchedAt
+      ? new Date(info.fetchedAt).toLocaleString('de-DE', {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        })
+      : '';
+    fetchHint.className = 'settings-hint ok';
+    fetchHint.textContent = `${info.fetchedCount} Modelle abgerufen${when ? ` (${when})` : ''} – im Dropdown verfügbar.`;
+  } else {
+    fetchHint.textContent = 'Noch keine Modelle abgerufen.';
+  }
+
+  fetchBtn.addEventListener('click', async () => {
+    fetchHint.className = 'settings-hint';
+    fetchHint.innerHTML = '<span class="spinner"></span>Modelle werden abgerufen…';
+    fetchBtn.disabled = true;
+    try {
+      const result = await api.fetchProviderModels(provider);
+      // Erfolg: Neu laden zeigt Anzahl/Zeitpunkt aus dem Server-Status.
+      await loadSettings();
+      console.info(`[Modelle] ${provider}: ${result.count} Modelle abgerufen.`);
+    } catch (err) {
+      // Fehler: bestehende Auswahl bleibt unverändert, nur Meldung anzeigen.
+      fetchHint.className = 'settings-hint error';
+      fetchHint.textContent = err.message;
+      fetchBtn.disabled = false;
+    }
+  });
 
   async function saveModel(value) {
     modelHint.className = 'settings-hint';
@@ -146,6 +181,11 @@ function buildCard(provider, info) {
 
   modelRow.append(modelInput, modelSaveBtn, modelClearBtn);
   card.append(modelLabel, modelRow, modelHint);
+
+  const fetchRow = document.createElement('div');
+  fetchRow.className = 'settings-row';
+  fetchRow.append(fetchBtn, fetchHint);
+  card.appendChild(fetchRow);
   return card;
 }
 

@@ -5,3 +5,4 @@ gemini-key.txt
 openai-key.txt
 custom-models.json
 system-prompts.json
+fetched-models.json

@@ -95,6 +95,21 @@ Für das Tool brauchst du je Anbieter einen eigenen API-Key (siehe Spalte oben).
 2. Trage nur deinen API-Key hinein und speichere.
 3. Server neu starten (`start.bat` schließen und erneut doppelklicken).
 
+### Modelle beim Anbieter abrufen
+
+Statt Modell-IDs von Hand zu suchen, kannst du sie direkt beim Anbieter
+abfragen: In den Einstellungen steht pro Anbieter der Button
+**„🔄 Modelle abrufen"**. Er fragt – mit deinem hinterlegten Key – die
+offizielle Modell-Liste ab (Anthropic `/v1/models`, Google
+`/v1beta/models`, OpenAI `/v1/models`), filtert auf textgenerierungsfähige
+Modelle und legt das Ergebnis lokal in `fetched-models.json` ab. Danach
+stehen die Modelle im **„KI-Modell"**-Dropdown zur Auswahl.
+
+Der Abruf passiert **nur auf Klick** – beim Start der App wird nie etwas
+nachgeladen, sondern ausschließlich die zuletzt gespeicherte Liste verwendet.
+Schlägt ein Abruf fehl (kein Key, ungültiger Key, kein Netz), erscheint eine
+klare Meldung und die bisherige Auswahl bleibt unverändert erhalten.
+
 ### Modell selbst eintragen (Modelle ändern sich)
 
 Anbieter benennen ihre Modelle regelmäßig um. Deshalb kannst du in den
@@ -103,7 +118,9 @@ und dort die aktuelle Modell-ID eintragen (z. B. `gemini-3.6-flash`). Dieses
 eigene Modell erscheint dann im **„KI-Modell"**-Dropdown im Projekt und wird für
 die Generierung verwendet – ganz ohne Code-Änderung. Die vorgegebenen Modelle
 bleiben zusätzlich wählbar. „Zurücksetzen" entfernt das eigene Modell wieder.
-Gespeichert wird es lokal in `custom-models.json` (nicht in Git).
+Gespeichert wird es lokal in `custom-models.json` (nicht in Git). Das Feld
+bleibt auch dann nutzbar, wenn du Modelle abrufst – im Dropdown erscheinen
+eigene und abgerufene Modelle zusammen, ohne Duplikate.
 
 Du kannst mehrere Anbieter parallel einrichten und im Dropdown umschalten.
 Anbieter ohne hinterlegten Key sind im Dropdown mit „(Key fehlt)" markiert; ein
