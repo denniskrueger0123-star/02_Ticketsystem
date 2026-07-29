@@ -149,8 +149,78 @@ function buildCard(provider, info) {
   return card;
 }
 
+const SYSPROMPT_LABELS = {
+  promptGenerator: 'System-Anweisung: Claude-Code-Prompt-Generator',
+  ticketDraft: 'System-Anweisung: Ticket-Entwurf aus Freitext',
+};
+
+const sysListEl = document.getElementById('sysprompts-list');
+
+function buildSysPromptCard(key, info) {
+  const card = document.createElement('div');
+  card.className = 'settings-card';
+
+  const head = document.createElement('div');
+  head.className = 'settings-card-head';
+  const h3 = document.createElement('h3');
+  h3.textContent = SYSPROMPT_LABELS[key] || key;
+  head.appendChild(h3);
+  card.appendChild(head);
+
+  const status = document.createElement('p');
+  status.className = `settings-status ${info.isDefault ? 'muted' : 'ok'}`;
+  status.textContent = info.isDefault ? 'Standardtext (unverändert)' : 'Angepasst';
+  card.appendChild(status);
+
+  const ta = document.createElement('textarea');
+  ta.className = 'sysprompt-text';
+  ta.rows = 6;
+  ta.value = info.text || '';
+  card.appendChild(ta);
+
+  const actions = document.createElement('div');
+  actions.className = 'settings-row';
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-primary';
+  saveBtn.textContent = 'Speichern';
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Auf Standard zurücksetzen';
+  resetBtn.disabled = info.isDefault;
+  const hint = document.createElement('span');
+  hint.className = 'settings-hint';
+
+  saveBtn.addEventListener('click', async () => {
+    hint.className = 'settings-hint';
+    hint.textContent = 'Speichere…';
+    saveBtn.disabled = true;
+    try {
+      await api.saveSystemPrompt(key, ta.value.trim());
+      await loadSettings();
+    } catch (err) {
+      hint.className = 'settings-hint error';
+      hint.textContent = err.message;
+      saveBtn.disabled = false;
+    }
+  });
+  resetBtn.addEventListener('click', async () => {
+    if (!confirm('Diese System-Anweisung auf den Standardtext zurücksetzen?')) return;
+    try {
+      await api.saveSystemPrompt(key, '');
+      await loadSettings();
+    } catch (err) {
+      hint.className = 'settings-hint error';
+      hint.textContent = err.message;
+    }
+  });
+
+  actions.append(saveBtn, resetBtn, hint);
+  card.appendChild(actions);
+  return card;
+}
+
 async function loadSettings() {
   listEl.innerHTML = '';
+  if (sysListEl) sysListEl.innerHTML = '';
   let data;
   try {
     data = await api.getSettings();
@@ -161,6 +231,11 @@ async function loadSettings() {
   Object.entries(data.providers).forEach(([provider, info]) => {
     listEl.appendChild(buildCard(provider, info));
   });
+  if (sysListEl && data.systemPrompts) {
+    Object.entries(data.systemPrompts).forEach(([key, info]) => {
+      sysListEl.appendChild(buildSysPromptCard(key, info));
+    });
+  }
 }
 
 loadSettings();

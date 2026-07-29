@@ -33,6 +33,7 @@
 }
 
 * { box-sizing: border-box; }
+.hidden { display: none !important; }
 
 body {
   font-family: "Liberation Sans", "DejaVu Sans", -apple-system, Arial, sans-serif;
@@ -288,6 +289,8 @@ footer.pagefoot { padding: 30px 24px 10px; color: var(--ink-soft); font-size: 8p
 .settings-row input { flex: 1 1 220px; min-width: 160px; }
 .settings-hint { display: block; font-size: 8pt; color: var(--ink-soft); margin-top: 6px; min-height: 12px; }
 .settings-sublabel { display: block; font-size: 7.6pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin: 14px 0 6px; }
+.settings-section-title { max-width: 720px; margin: 34px auto 4px; font-size: 13pt; }
+.sysprompt-text { width: 100%; margin-bottom: 10px; line-height: 1.5; }
 .settings-hint.error { color: var(--danger); }
 .settings-hint.ok { color: var(--st-done); }
 .settings-help { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; }
@@ -315,5 +318,42 @@ footer.pagefoot { padding: 30px 24px 10px; color: var(--ink-soft); font-size: 8p
 .bm-toggle.on { background: var(--st-done); border-color: var(--st-done); color: #fff; }
 .bm-toggle.on:hover { background: #128a3e; border-color: #128a3e; color: #fff; }
 .modal-wide { max-width: 760px; }
+
+/* ── Markdown-Vorschau ────────────────────────────────────────────── */
+.md-preview {
+  border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px;
+  background: #fbfbf8; margin-bottom: 14px; max-height: 340px; overflow-y: auto;
+  font-size: 9.4pt; line-height: 1.6;
+}
+.md-preview.hidden { display: none; }
+.md-preview h1 { font-size: 15pt; margin: 6px 0 8px; }
+.md-preview h2 { font-size: 12.5pt; margin: 14px 0 6px; }
+.md-preview h3 { font-size: 10.8pt; margin: 12px 0 5px; }
+.md-preview p { margin: 6px 0; }
+.md-preview ul, .md-preview ol { margin: 6px 0 6px 22px; }
+.md-preview li { margin: 2px 0; }
+.md-preview code { background: #eceae3; padding: 1px 5px; border-radius: 4px; font-size: 8.8pt; }
+.md-preview pre { background: #14171f; color: #e6e4dd; padding: 10px 12px; border-radius: 6px; overflow-x: auto; }
+.md-preview pre code { background: none; padding: 0; color: inherit; }
+.md-preview a { color: var(--accent-2); }
+.md-preview blockquote { border-left: 3px solid var(--line); margin: 6px 0; padding-left: 12px; color: var(--ink-soft); }
+
+/* Readme-Anzeige direkt im Projekt */
+.readme-panel { max-width: 1080px; margin: 0 auto; padding: 6px 24px 0; }
+.readme-panel .md-preview { max-height: none; }
+
+/* ── Idee → Ticket Entwurf ────────────────────────────────────────── */
+.idea-draft { border-top: 1px dashed var(--line); margin-top: 16px; padding-top: 14px; }
+.idea-draft.hidden { display: none; }
+.idea-draft-title { font-size: 10.5pt; margin: 0 0 10px; color: var(--accent-2); }
+
+/* ── Spinner ──────────────────────────────────────────────────────── */
+.spinner {
+  display: inline-block; width: 13px; height: 13px; vertical-align: middle;
+  border: 2px solid var(--line); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px;
+}
+.spinner.hidden { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .checkline { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 9.2pt; font-weight: 600; color: var(--ink); cursor: pointer; }
 .checkline input { width: auto; }

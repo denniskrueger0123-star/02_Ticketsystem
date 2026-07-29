@@ -53,6 +53,9 @@ const api = {
   generateBmPrompt(projectId, model) {
     return this.request('POST', `/api/projects/${projectId}/bm-prompt`, { model });
   },
+  draftTicket(projectId, text, model) {
+    return this.request('POST', `/api/projects/${projectId}/draft-ticket`, { text, model });
+  },
   getModels() {
     return this.request('GET', '/api/models');
   },
@@ -68,6 +71,9 @@ const api = {
   },
   saveSettingModel(provider, model) {
     return this.request('POST', `/api/settings/${provider}/model`, { model });
+  },
+  saveSystemPrompt(key, text) {
+    return this.request('POST', `/api/settings/system-prompt/${key}`, { text });
   },
 
   getVersion() {

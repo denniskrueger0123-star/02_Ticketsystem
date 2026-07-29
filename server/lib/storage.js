@@ -61,7 +61,7 @@ async function getProject(projectId) {
   }
 }
 
-async function createProject({ name, description, promptSkill, bmPromptSkill, bmPrompt, importedAt }) {
+async function createProject({ name, description, promptSkill, bmPromptSkill, bmPrompt, projektReadme, importedAt }) {
   const id = randomUUID();
   const now = new Date().toISOString();
   const project = {
@@ -71,6 +71,7 @@ async function createProject({ name, description, promptSkill, bmPromptSkill, bm
     promptSkill: promptSkill || '',
     bmPromptSkill: bmPromptSkill || '',
     bmPrompt: bmPrompt || '',
+    projektReadme: projektReadme || '',
     importedAt: importedAt || null,
     lastExportedAt: null,
     createdAt: now,
@@ -81,7 +82,7 @@ async function createProject({ name, description, promptSkill, bmPromptSkill, bm
   return project;
 }
 
-async function updateProject(projectId, { name, description, promptSkill, bmPromptSkill, bmPrompt, lastExportedAt }) {
+async function updateProject(projectId, { name, description, promptSkill, bmPromptSkill, bmPrompt, projektReadme, lastExportedAt }) {
   const project = await getProject(projectId);
   if (!project) return null;
   if (name !== undefined) project.name = name;
@@ -89,6 +90,7 @@ async function updateProject(projectId, { name, description, promptSkill, bmProm
   if (promptSkill !== undefined) project.promptSkill = promptSkill;
   if (bmPromptSkill !== undefined) project.bmPromptSkill = bmPromptSkill;
   if (bmPrompt !== undefined) project.bmPrompt = bmPrompt;
+  if (projektReadme !== undefined) project.projektReadme = projektReadme;
   if (lastExportedAt !== undefined) project.lastExportedAt = lastExportedAt;
   project.updatedAt = new Date().toISOString();
   await writeJson(projectFile(projectId), project);
@@ -195,6 +197,7 @@ async function exportProject(projectId) {
       promptSkill: project.promptSkill || '',
       bmPromptSkill: project.bmPromptSkill || '',
       bmPrompt: project.bmPrompt || '',
+      projektReadme: project.projektReadme || '',
     },
     tickets: tickets.map((t) => ({
       titel: t.titel || '',
@@ -230,6 +233,7 @@ async function importProject(data) {
     promptSkill: src.promptSkill || '',
     bmPromptSkill: src.bmPromptSkill || '',
     bmPrompt: src.bmPrompt || '',
+    projektReadme: src.projektReadme || '',
     importedAt: new Date().toISOString(),
   });
 

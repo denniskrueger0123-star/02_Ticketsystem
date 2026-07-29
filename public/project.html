@@ -13,6 +13,8 @@
       <div class="topbar">
         <p class="eyebrow">Ideensammlung als Ticketsystem</p>
         <span class="topbar-links">
+          <button class="gear-link back" id="idea-open-btn" type="button">💡 Idee → Ticket</button>
+          <button class="gear-link back" id="readme-open-btn" type="button">📄 Readme</button>
           <button class="gear-link back" id="bm-open-btn" type="button">🟢 Boss Move</button>
           <button class="gear-link back" id="export-project-btn" type="button">⭳ Export</button>
           <button class="gear-link back" id="edit-project-btn" type="button">✏ KI-Anweisungen</button>
@@ -67,6 +69,10 @@
         <button class="chip" data-dim="bm" data-val="no">— Nicht</button>
       </div>
     </div>
+  </div>
+
+  <div class="readme-panel hidden" id="readme-panel">
+    <div class="md-preview" id="readme-render"></div>
   </div>
 
   <section class="overview">
@@ -139,6 +145,86 @@
     </div>
   </div>
 
+  <div id="readme-modal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h2>📄 Projekt-Readme / Kontext</h2>
+      <p class="field-hint" style="margin-top:-8px; margin-bottom:14px;">
+        Beschreibe hier den aktuellen Projektstand (Markdown). Wird auch als
+        Kontext für „Idee → Ticket“ genutzt. Optional.
+      </p>
+      <div class="prompt-actions" style="margin-bottom:10px;">
+        <button type="button" id="readme-upload-btn">⭱ .md-Datei laden</button>
+        <input type="file" id="readme-file-input" accept=".md,.markdown,text/markdown,text/plain" hidden />
+        <button type="button" id="readme-preview-toggle">Vorschau anzeigen</button>
+        <span class="prompt-hint" id="readme-hint"></span>
+      </div>
+      <div class="form-group">
+        <textarea id="readme-text" rows="12" placeholder="# Projektstand&#10;&#10;- Punkt 1&#10;- Punkt 2"></textarea>
+      </div>
+      <div id="readme-preview" class="md-preview hidden"></div>
+      <div class="modal-actions">
+        <button type="button" id="readme-cancel-btn">Abbrechen</button>
+        <button type="button" class="btn-primary" id="readme-save-btn">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="idea-modal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h2>💡 Idee → Ticket-Entwurf</h2>
+      <p class="field-hint" style="margin-top:-8px; margin-bottom:14px;">
+        Beschreibe deine Idee frei. Die KI erstellt daraus einen Entwurf, den du
+        vor dem Anlegen noch bearbeiten kannst.
+      </p>
+      <div class="form-group">
+        <label for="idea-text">Neue Idee beschreiben</label>
+        <textarea id="idea-text" rows="4" placeholder="z. B. „Wir brauchen einen Export der Tickets als CSV, damit man sie in Excel öffnen kann.“"></textarea>
+      </div>
+      <div class="prompt-actions">
+        <button type="button" class="btn-primary" id="idea-generate-btn">✨ Entwurf generieren</button>
+        <span class="prompt-hint" id="idea-hint"></span>
+      </div>
+
+      <div id="idea-draft" class="idea-draft hidden">
+        <h3 class="idea-draft-title">Entwurf (bearbeitbar)</h3>
+        <div class="form-group">
+          <label for="idea-titel">Titel</label>
+          <input type="text" id="idea-titel" />
+        </div>
+        <div class="form-group">
+          <label for="idea-beschreibung">Beschreibung</label>
+          <textarea id="idea-beschreibung" rows="4"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="idea-kategorie">Kategorie</label>
+            <select id="idea-kategorie">
+              <option value="Frontend">Frontend</option>
+              <option value="Backend">Backend</option>
+              <option value="Infrastruktur">Infrastruktur</option>
+              <option value="Prozess">Prozess</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="idea-schweregrad">Schweregrad</label>
+            <select id="idea-schweregrad">
+              <option value="Kritisch">Kritisch</option>
+              <option value="Hoch">Hoch</option>
+              <option value="Mittel">Mittel</option>
+              <option value="Klein">Klein</option>
+              <option value="Recherche">Recherche</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="idea-cancel-btn">Verwerfen</button>
+        <button type="button" class="btn-primary hidden" id="idea-create-btn">Ticket erstellen</button>
+      </div>
+    </div>
+  </div>
+
   <div id="bm-modal" class="modal-overlay hidden">
     <div class="modal modal-wide">
       <h2>🟢 Boss Move – Super-Prompt</h2>
@@ -187,6 +273,7 @@
 
   <script src="js/api.js"></script>
   <script src="js/version.js"></script>
+  <script src="js/md.js"></script>
   <script src="js/project.js"></script>
 </body>
 </html>

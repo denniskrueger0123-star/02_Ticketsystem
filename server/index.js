@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
-const { listModels, providerStatus, settingsStatus, saveKey, clearKey, saveCustomModel, DEFAULT_MODEL, LlmError } = require('./lib/llm');
+const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveCustomModel, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 
@@ -27,7 +27,21 @@ app.get('/api/models', (req, res) => {
 // Einstellungen: API-Keys per UI verwalten (werden serverseitig in Dateien
 // im Projektordner geschrieben, niemals ans Frontend zurückgegeben)
 app.get('/api/settings', (req, res) => {
-  res.json({ providers: settingsStatus() });
+  res.json({ providers: settingsStatus(), systemPrompts: systemPromptsStatus() });
+});
+
+// Globale System-Anweisung setzen/zurücksetzen (leerer Text = Standard)
+app.post('/api/settings/system-prompt/:key', (req, res) => {
+  try {
+    saveSystemPrompt(req.params.key, req.body.text);
+    res.json({ systemPrompts: systemPromptsStatus() });
+  } catch (err) {
+    if (err instanceof LlmError) {
+      res.status(400).json({ error: err.message, code: err.code });
+    } else {
+      res.status(500).json({ error: 'Interner Fehler beim Speichern der Anweisung.' });
+    }
+  }
 });
 
 app.post('/api/settings/:provider', (req, res) => {

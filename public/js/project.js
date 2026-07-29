@@ -32,6 +32,25 @@ const projectEditFormEl = document.getElementById('project-edit-form');
 const peSkillInput = document.getElementById('pe-skill');
 const projectEditErrorEl = document.getElementById('project-edit-error');
 
+// Readme Modal + Anzeige
+const readmeModalEl = document.getElementById('readme-modal');
+const readmeTextInput = document.getElementById('readme-text');
+const readmePreviewEl = document.getElementById('readme-preview');
+const readmeHintEl = document.getElementById('readme-hint');
+const readmePanelEl = document.getElementById('readme-panel');
+const readmeRenderEl = document.getElementById('readme-render');
+
+// Idee → Ticket Modal
+const ideaModalEl = document.getElementById('idea-modal');
+const ideaTextInput = document.getElementById('idea-text');
+const ideaHintEl = document.getElementById('idea-hint');
+const ideaDraftEl = document.getElementById('idea-draft');
+const ideaTitelInput = document.getElementById('idea-titel');
+const ideaBeschreibungInput = document.getElementById('idea-beschreibung');
+const ideaKategorieInput = document.getElementById('idea-kategorie');
+const ideaSchweregradInput = document.getElementById('idea-schweregrad');
+const ideaCreateBtn = document.getElementById('idea-create-btn');
+
 // Boss Move Modal
 const bmModalEl = document.getElementById('bm-modal');
 const bmCountEl = document.getElementById('bm-count');
@@ -72,6 +91,155 @@ async function onProjectEditSubmit(e) {
     closeProjectEditModal();
   } catch (err) {
     projectEditErrorEl.textContent = err.message;
+  }
+}
+
+// ── Projekt-Readme (Teil B) ─────────────────────────────────────────
+document.getElementById('readme-open-btn').addEventListener('click', openReadmeModal);
+document.getElementById('readme-cancel-btn').addEventListener('click', () => readmeModalEl.classList.add('hidden'));
+document.getElementById('readme-save-btn').addEventListener('click', saveReadme);
+document.getElementById('readme-upload-btn').addEventListener('click', () =>
+  document.getElementById('readme-file-input').click()
+);
+document.getElementById('readme-file-input').addEventListener('change', onReadmeFile);
+document.getElementById('readme-preview-toggle').addEventListener('click', toggleReadmePreview);
+
+function renderReadmePanel() {
+  const md = (projectData && projectData.projektReadme) || '';
+  if (md.trim()) {
+    readmeRenderEl.innerHTML = renderMarkdown(md);
+    readmePanelEl.classList.remove('hidden');
+  } else {
+    readmeRenderEl.innerHTML = '';
+    readmePanelEl.classList.add('hidden');
+  }
+}
+
+function openReadmeModal() {
+  readmeHintEl.className = 'prompt-hint';
+  readmeHintEl.textContent = '';
+  readmeTextInput.value = (projectData && projectData.projektReadme) || '';
+  readmePreviewEl.classList.add('hidden');
+  document.getElementById('readme-preview-toggle').textContent = 'Vorschau anzeigen';
+  readmeModalEl.classList.remove('hidden');
+  readmeTextInput.focus();
+}
+
+function toggleReadmePreview() {
+  const btn = document.getElementById('readme-preview-toggle');
+  if (readmePreviewEl.classList.contains('hidden')) {
+    readmePreviewEl.innerHTML = renderMarkdown(readmeTextInput.value);
+    readmePreviewEl.classList.remove('hidden');
+    btn.textContent = 'Vorschau ausblenden';
+  } else {
+    readmePreviewEl.classList.add('hidden');
+    btn.textContent = 'Vorschau anzeigen';
+  }
+}
+
+async function onReadmeFile() {
+  const input = document.getElementById('readme-file-input');
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    readmeTextInput.value = text;
+    readmeHintEl.className = 'prompt-hint ok';
+    readmeHintEl.textContent = `„${file.name}“ geladen – noch speichern.`;
+    if (!readmePreviewEl.classList.contains('hidden')) {
+      readmePreviewEl.innerHTML = renderMarkdown(readmeTextInput.value);
+    }
+  } catch (err) {
+    readmeHintEl.className = 'prompt-hint error';
+    readmeHintEl.textContent = 'Datei konnte nicht gelesen werden.';
+  } finally {
+    input.value = '';
+  }
+}
+
+async function saveReadme() {
+  readmeHintEl.className = 'prompt-hint';
+  readmeHintEl.textContent = 'Speichere…';
+  try {
+    projectData = await api.updateProject(projectId, { projektReadme: readmeTextInput.value });
+    renderReadmePanel();
+    readmeModalEl.classList.add('hidden');
+  } catch (err) {
+    readmeHintEl.className = 'prompt-hint error';
+    readmeHintEl.textContent = err.message;
+  }
+}
+
+// ── Idee → Ticket (Teil C) ──────────────────────────────────────────
+document.getElementById('idea-open-btn').addEventListener('click', openIdeaModal);
+document.getElementById('idea-cancel-btn').addEventListener('click', () => ideaModalEl.classList.add('hidden'));
+document.getElementById('idea-generate-btn').addEventListener('click', generateIdeaDraft);
+ideaCreateBtn.addEventListener('click', createIdeaTicket);
+
+function openIdeaModal() {
+  ideaHintEl.className = 'prompt-hint';
+  ideaHintEl.textContent = '';
+  ideaTextInput.value = '';
+  ideaDraftEl.classList.add('hidden');
+  ideaCreateBtn.classList.add('hidden');
+  ideaModalEl.classList.remove('hidden');
+  ideaTextInput.focus();
+}
+
+async function generateIdeaDraft() {
+  const text = ideaTextInput.value.trim();
+  if (!text) {
+    ideaHintEl.className = 'prompt-hint error';
+    ideaHintEl.textContent = 'Bitte zuerst eine Idee beschreiben.';
+    return;
+  }
+  const genBtn = document.getElementById('idea-generate-btn');
+  ideaHintEl.className = 'prompt-hint';
+  ideaHintEl.innerHTML = '<span class="spinner"></span>Entwurf wird generiert… (kann einen Moment dauern)';
+  genBtn.disabled = true;
+  try {
+    const draft = await api.draftTicket(projectId, text, modelSelect.value);
+    ideaTitelInput.value = draft.titel || '';
+    ideaBeschreibungInput.value = draft.beschreibung || '';
+    ideaKategorieInput.value = draft.kategorie || 'Prozess';
+    ideaSchweregradInput.value = draft.schweregrad || 'Mittel';
+    ideaDraftEl.classList.remove('hidden');
+    ideaCreateBtn.classList.remove('hidden');
+    ideaHintEl.className = 'prompt-hint ok';
+    ideaHintEl.textContent = 'Entwurf erstellt – bei Bedarf anpassen und „Ticket erstellen“.';
+  } catch (err) {
+    ideaHintEl.className = 'prompt-hint error';
+    ideaHintEl.textContent = err.message;
+  } finally {
+    genBtn.disabled = false;
+  }
+}
+
+async function createIdeaTicket() {
+  const data = {
+    titel: ideaTitelInput.value.trim(),
+    beschreibung: ideaBeschreibungInput.value.trim(),
+    kategorie: ideaKategorieInput.value,
+    schweregrad: ideaSchweregradInput.value,
+    status: 'Offen',
+  };
+  if (!data.titel) {
+    ideaHintEl.className = 'prompt-hint error';
+    ideaHintEl.textContent = 'Der Titel darf nicht leer sein.';
+    return;
+  }
+  ideaCreateBtn.disabled = true;
+  ideaHintEl.className = 'prompt-hint';
+  ideaHintEl.textContent = 'Ticket wird angelegt…';
+  try {
+    await api.createTicket(projectId, data);
+    ideaModalEl.classList.add('hidden');
+    await loadTickets();
+  } catch (err) {
+    ideaHintEl.className = 'prompt-hint error';
+    ideaHintEl.textContent = err.message;
+  } finally {
+    ideaCreateBtn.disabled = false;
   }
 }
 
@@ -625,6 +793,7 @@ async function loadModels() {
 (async () => {
   await loadProject();
   if (projectData) {
+    renderReadmePanel();
     await loadModels();
     await loadTickets();
   }

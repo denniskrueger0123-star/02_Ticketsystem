@@ -120,6 +120,38 @@ Prompt-Generierung in diesem Projekt automatisch an das Modell mitgeschickt –
 zusätzlich zu Titel, Beschreibung, Kategorie, Schweregrad und Status des
 jeweiligen Tickets.
 
+## Idee → Ticket (KI-Entwurf aus Freitext)
+
+Über **„💡 Idee → Ticket"** oben im Projekt beschreibst du eine Idee frei in
+Worten. Die KI erzeugt daraus einen **Ticket-Entwurf** mit Titel, Beschreibung,
+Kategorie und Schweregrad. Der Entwurf wird **nicht sofort gespeichert**: Du
+kannst alle Felder noch anpassen und legst das Ticket erst mit
+**„Ticket erstellen"** an; „Verwerfen" bricht ohne Anlage ab.
+
+Als Kontext fließen – sofern befüllt – die projektweiten „KI-Anweisungen" und
+das Projekt-Readme mit ein. Verwendet wird dasselbe Modell wie beim
+Prompt-Generator (Auswahl im „KI-Modell"-Dropdown).
+
+## Projekt-Readme (Kontext & Projektstand)
+
+Über **„📄 Readme"** hinterlegst du pro Projekt einen Markdown-Text, der den
+Projektstand beschreibt. Zwei Wege: **.md-Datei laden** oder direkt eintippen
+bzw. einfügen. Der Inhalt wird unter der Filterleiste als **gerendertes
+Markdown** angezeigt (Überschriften, Listen, Code, Links) und dient zusätzlich
+als Kontext für „Idee → Ticket". Das Feld ist optional.
+
+## System-Anweisungen anpassen
+
+In den Einstellungen (⚙) findest du unter **„System-Anweisungen"** zwei
+Grundanweisungen, die das KI-Verhalten steuern:
+
+1. **Claude-Code-Prompt-Generator** – steuert „✨ Prompt generieren"
+2. **Ticket-Entwurf aus Freitext** – steuert „💡 Idee → Ticket"
+
+Beide sind mit sinnvollen Standardtexten vorbelegt und funktionieren ohne
+Anpassung. Änderungen werden serverseitig in `system-prompts.json` gespeichert
+(nicht in Git); „Auf Standard zurücksetzen" stellt den Originaltext wieder her.
+
 ## Boss Move – mehrere Tickets zu einem Super-Prompt bündeln
 
 Manchmal willst du nicht für jedes Ticket einzeln einen Prompt, sondern **einen

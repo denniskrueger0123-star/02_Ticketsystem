@@ -84,7 +84,10 @@ function exampleModelFor(provider) {
   return m ? m.id : '';
 }
 
-const SYSTEM_PROMPT =
+// ── Globale, in den Einstellungen bearbeitbare System-Anweisungen ───
+// Standardtexte; die tatsächlich verwendeten Texte liegen (falls angepasst) in
+// system-prompts.json. Fehlt dort ein Wert, greift der Default.
+const DEFAULT_PROMPT_GENERATOR_SYSTEM =
   'Du bist ein Assistent, der aus Ticket-Beschreibungen präzise, umsetzbare ' +
   'Prompts für Claude Code (ein KI-Coding-Tool) formuliert. Schreibe den Prompt ' +
   'auf Deutsch, in der zweiten Person ("Implementiere...", "Analysiere..."). Er ' +
@@ -92,6 +95,75 @@ const SYSTEM_PROMPT =
   'Ziel, betroffene Bereiche und sinnvolle Schritte. Gib AUSSCHLIESSLICH den ' +
   'fertigen Prompt-Text aus – keine Einleitung, keine Erklärung, keine ' +
   'Code-Blöcke oder Anführungszeichen drumherum.';
+
+const DEFAULT_TICKET_DRAFT_SYSTEM =
+  'Du bist ein Assistent, der aus einer frei formulierten Idee einen ' +
+  'strukturierten Ticket-Entwurf erzeugt. Antworte AUSSCHLIESSLICH mit einem ' +
+  'einzigen JSON-Objekt (keine Erklärung, kein Text, keine Code-Blöcke) mit ' +
+  'genau diesen Feldern:\n' +
+  '- "titel": prägnanter Titel (String, Deutsch)\n' +
+  '- "beschreibung": ausformulierte Beschreibung des Vorhabens (String, Deutsch)\n' +
+  '- "kategorie": genau einer von "Frontend", "Backend", "Infrastruktur", "Prozess"\n' +
+  '- "schweregrad": genau einer von "Kritisch", "Hoch", "Mittel", "Klein", "Recherche"\n' +
+  'Wähle Kategorie und Schweregrad passend zum Inhalt. Gib nur das JSON aus.';
+
+const SYSTEM_PROMPTS_FILE = 'system-prompts.json';
+const SYSTEM_PROMPT_DEFAULTS = {
+  promptGenerator: DEFAULT_PROMPT_GENERATOR_SYSTEM,
+  ticketDraft: DEFAULT_TICKET_DRAFT_SYSTEM,
+};
+
+function readSystemPrompts() {
+  let raw;
+  try {
+    raw = fs.readFileSync(path.join(ROOT, SYSTEM_PROMPTS_FILE), 'utf-8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return {};
+    throw err;
+  }
+  try {
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' && !Array.isArray(obj) ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+// Liefert den aktiven Text einer System-Anweisung (gespeichert oder Default).
+function getSystemPrompt(key) {
+  const stored = readSystemPrompts();
+  const val = stored[key];
+  if (typeof val === 'string' && val.trim()) return val;
+  return SYSTEM_PROMPT_DEFAULTS[key] || '';
+}
+
+// Speichert eine System-Anweisung; leerer Text = auf Default zurücksetzen.
+function saveSystemPrompt(key, text) {
+  if (!(key in SYSTEM_PROMPT_DEFAULTS)) {
+    throw new LlmError('Unbekannte System-Anweisung.', 'BAD_PROMPT_KEY');
+  }
+  const all = readSystemPrompts();
+  const trimmed = (text || '').trim();
+  if (trimmed) all[key] = trimmed;
+  else delete all[key];
+  fs.writeFileSync(path.join(ROOT, SYSTEM_PROMPTS_FILE), JSON.stringify(all, null, 2) + '\n', 'utf-8');
+  return getSystemPrompt(key);
+}
+
+// Status beider System-Anweisungen für die Einstellungsseite.
+function systemPromptsStatus() {
+  const stored = readSystemPrompts();
+  const out = {};
+  for (const key of Object.keys(SYSTEM_PROMPT_DEFAULTS)) {
+    const isCustom = typeof stored[key] === 'string' && stored[key].trim();
+    out[key] = {
+      text: isCustom ? stored[key] : SYSTEM_PROMPT_DEFAULTS[key],
+      isDefault: !isCustom,
+      default: SYSTEM_PROMPT_DEFAULTS[key],
+    };
+  }
+  return out;
+}
 
 const BM_SYSTEM_PROMPT =
   'Du bist ein Assistent, der aus MEHREREN zusammengehörigen Tickets EINEN ' +
@@ -299,9 +371,10 @@ async function generatePrompt({ project, ticket, modelId }) {
     );
   }
 
+  const baseSystem = getSystemPrompt('promptGenerator');
   const system = project.promptSkill
-    ? `${SYSTEM_PROMPT}\n\nZusätzliche Anweisungen für dieses Projekt (unbedingt beachten):\n${project.promptSkill}`
-    : SYSTEM_PROMPT;
+    ? `${baseSystem}\n\nZusätzliche Anweisungen für dieses Projekt (unbedingt beachten):\n${project.promptSkill}`
+    : baseSystem;
   const user = buildUserContent(project, ticket);
 
   let text;
@@ -355,12 +428,93 @@ async function generateBossMovePrompt({ project, tickets, modelId }) {
   return text;
 }
 
+// ── Funktion 2: Ticket-Entwurf aus Freitext ─────────────────────────
+const TICKET_KATEGORIEN = ['Frontend', 'Backend', 'Infrastruktur', 'Prozess'];
+const TICKET_SCHWEREGRADE = ['Kritisch', 'Hoch', 'Mittel', 'Klein', 'Recherche'];
+
+// Extrahiert ein JSON-Objekt aus einer Modell-Antwort (entfernt evtl.
+// Code-Fences oder umgebenden Text).
+function extractJson(text) {
+  let t = (text || '').trim();
+  // ```json ... ``` oder ``` ... ``` entfernen
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) t = fence[1].trim();
+  // Falls noch Text drumherum: erstes { bis letztes }
+  const first = t.indexOf('{');
+  const last = t.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) t = t.slice(first, last + 1);
+  return JSON.parse(t);
+}
+
+function buildDraftUserContent(project, text) {
+  let out = `Freitext-Idee:\n${text}\n`;
+  if (project.promptSkill) {
+    out += `\nProjektweite KI-Anweisungen (beachten):\n${project.promptSkill}\n`;
+  }
+  if (project.projektReadme) {
+    out += `\nProjekt-Readme / Kontext (nur zur Orientierung):\n${project.projektReadme}\n`;
+  }
+  out += '\nErzeuge daraus einen Ticket-Entwurf als JSON.';
+  return out;
+}
+
+async function draftTicketFromText({ project, text, modelId }) {
+  if (!text || !text.trim()) {
+    throw new LlmError('Bitte zuerst eine Idee als Freitext eingeben.', 'NO_TEXT');
+  }
+
+  const models = allModels();
+  const model = models.find((m) => m.id === (modelId || DEFAULT_MODEL)) || models.find((m) => m.id === DEFAULT_MODEL);
+  if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
+
+  const key = resolveKey(model.provider);
+  if (!key) {
+    const cfg = PROVIDERS[model.provider];
+    throw new LlmError(
+      `Kein API-Key für ${cfg.label}. Lege die Datei "${cfg.keyFile}" im Projektordner an ` +
+        `und trage deinen API-Key hinein (oder setze die Umgebungsvariable ${cfg.keyEnv}).`,
+      'NO_KEY'
+    );
+  }
+
+  const system = getSystemPrompt('ticketDraft');
+  const user = buildDraftUserContent(project, text.trim());
+
+  let raw;
+  try {
+    raw = (await CALLERS[model.provider](model, key, system, user)).trim();
+  } catch (err) {
+    if (err instanceof LlmError) throw err;
+    throw new LlmError(`LLM-Aufruf fehlgeschlagen: ${err.message}`, 'API_ERROR');
+  }
+  if (!raw) throw new LlmError('Das Modell hat keinen Text zurückgegeben.', 'EMPTY');
+
+  let parsed;
+  try {
+    parsed = extractJson(raw);
+  } catch (e) {
+    throw new LlmError('Die Antwort des Modells war kein gültiges JSON. Bitte erneut versuchen.', 'BAD_JSON');
+  }
+
+  const titel = String(parsed.titel || parsed.title || '').trim();
+  const beschreibung = String(parsed.beschreibung || parsed.description || '').trim();
+  let kategorie = String(parsed.kategorie || parsed.category || '').trim();
+  let schweregrad = String(parsed.schweregrad || parsed.severity || '').trim();
+  if (!TICKET_KATEGORIEN.includes(kategorie)) kategorie = 'Prozess';
+  if (!TICKET_SCHWEREGRADE.includes(schweregrad)) schweregrad = 'Mittel';
+
+  return { titel, beschreibung, kategorie, schweregrad };
+}
+
 module.exports = {
   generatePrompt,
   generateBossMovePrompt,
+  draftTicketFromText,
   listModels,
   providerStatus,
   settingsStatus,
+  systemPromptsStatus,
+  saveSystemPrompt,
   saveKey,
   clearKey,
   saveCustomModel,

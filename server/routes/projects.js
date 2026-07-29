@@ -1,6 +1,6 @@
 const express = require('express');
 const storage = require('../lib/storage');
-const { generateBossMovePrompt } = require('../lib/llm');
+const { generateBossMovePrompt, draftTicketFromText } = require('../lib/llm');
 
 const router = express.Router();
 
@@ -51,7 +51,7 @@ router.get('/:projectId/export', async (req, res) => {
 });
 
 router.put('/:projectId', async (req, res) => {
-  const { name, description, promptSkill, bmPromptSkill, bmPrompt } = req.body;
+  const { name, description, promptSkill, bmPromptSkill, bmPrompt, projektReadme } = req.body;
   if (name !== undefined && !name.trim()) {
     return res.status(400).json({ error: 'name darf nicht leer sein' });
   }
@@ -61,6 +61,7 @@ router.put('/:projectId', async (req, res) => {
     promptSkill,
     bmPromptSkill,
     bmPrompt,
+    projektReadme,
   });
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   res.json(project);
@@ -90,6 +91,25 @@ router.post('/:projectId/bm-prompt', async (req, res) => {
     res.json({ bmPrompt: updated.bmPrompt, ticketCount: bmTickets.length });
   } catch (err) {
     const status = err.code === 'NO_KEY' ? 501 : err.code === 'NO_TICKETS' ? 400 : 502;
+    res.status(status).json({ error: err.message, code: err.code || 'API_ERROR' });
+  }
+});
+
+// Funktion 2: aus Freitext einen editierbaren Ticket-Entwurf erzeugen
+// (wird NICHT gespeichert – die Anlage erfolgt separat über POST /tickets).
+router.post('/:projectId/draft-ticket', async (req, res) => {
+  const project = await storage.getProject(req.params.projectId);
+  if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+
+  try {
+    const draft = await draftTicketFromText({
+      project,
+      text: req.body && req.body.text,
+      modelId: req.body && req.body.model,
+    });
+    res.json(draft);
+  } catch (err) {
+    const status = err.code === 'NO_KEY' ? 501 : err.code === 'NO_TEXT' ? 400 : 502;
     res.status(status).json({ error: err.message, code: err.code || 'API_ERROR' });
   }
 });
