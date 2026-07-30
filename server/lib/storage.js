@@ -133,15 +133,30 @@ async function getTicket(projectId, ticketId) {
   }
 }
 
+async function nextTicketNummer(projectId) {
+  const tickets = (await listTickets(projectId)) || [];
+  let max = 0;
+  for (const t of tickets) {
+    const m = String(t.titel || '').match(/^#(\d+)\s/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return max + 1;
+}
+
 async function createTicket(projectId, data) {
   const project = await getProject(projectId);
   if (!project) return null;
   const id = randomUUID();
   const now = new Date().toISOString();
+  let titel = data.titel || '';
+  if (!/^#\d+\s/.test(titel)) {
+    const nummer = await nextTicketNummer(projectId);
+    titel = titel ? `#${nummer} ${titel}` : `#${nummer}`;
+  }
   const ticket = {
     id,
     projectId,
-    titel: data.titel || '',
+    titel,
     beschreibung: data.beschreibung || '',
     kategorie: data.kategorie || '',
     schweregrad: data.schweregrad || '',
