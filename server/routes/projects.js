@@ -43,7 +43,10 @@ router.get('/:projectId/export', async (req, res) => {
     .replace(/[^a-z0-9-_]+/gi, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 60) || 'projekt';
-  res.setHeader('Content-Disposition', `attachment; filename="${safeName}.json"`);
+  const now = new Date(data.exportedAt);
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}_${stamp}.json"`);
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.send(JSON.stringify(data, null, 2));
   // Export-Zeitpunkt vermerken (Nebeneffekt nach dem Senden).

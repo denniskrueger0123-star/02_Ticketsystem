@@ -32,6 +32,10 @@
   <div class="filterbar">
     <div class="inner">
       <div class="filterrow">
+        <span class="fr-label">Suche</span>
+        <input type="search" id="search-input" class="search-input" placeholder="Titel durchsuchen…" />
+      </div>
+      <div class="filterrow">
         <span class="fr-label">Kategorie</span>
         <button class="chip active" data-dim="cat" data-val="all">Alle</button>
         <button class="chip" data-dim="cat" data-val="Frontend">Frontend</button>
@@ -87,6 +91,8 @@
   </section>
 
   <div class="detail-wrap" id="detail-wrap"></div>
+
+  <button type="button" id="scroll-top-btn" class="scroll-top-btn hidden" title="Nach oben scrollen" aria-label="Nach oben scrollen">↑</button>
 
   <footer class="pagefoot"><span id="pagefoot"></span> <span id="app-version"></span></footer>
 

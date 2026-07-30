@@ -60,8 +60,22 @@ const bmHintEl = document.getElementById('bm-hint');
 
 let projectData = null;
 let allTickets = [];
-const state = { cat: 'all', sev: 'all', st: 'all', bm: 'all' };
+const state = { cat: 'all', sev: 'all', st: 'all', bm: 'all', search: '' };
 let cards = []; // { ticket, cardEl, rowEl, severity }
+
+const searchInput = document.getElementById('search-input');
+searchInput.addEventListener('input', () => {
+  state.search = searchInput.value.trim().toLowerCase();
+  applyFilters();
+});
+
+const scrollTopBtn = document.getElementById('scroll-top-btn');
+window.addEventListener('scroll', () => {
+  scrollTopBtn.classList.toggle('hidden', window.scrollY < 400);
+});
+scrollTopBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 document.getElementById('new-ticket-btn').addEventListener('click', () => openModal());
 document.getElementById('ticket-cancel-btn').addEventListener('click', closeModal);
@@ -347,7 +361,8 @@ function matches(t) {
     (state.cat === 'all' || t.kategorie === state.cat) &&
     (state.sev === 'all' || t.schweregrad === state.sev) &&
     (state.st === 'all' || t.status === state.st) &&
-    (state.bm === 'all' || (state.bm === 'yes' ? t.bmStatus === true : t.bmStatus !== true))
+    (state.bm === 'all' || (state.bm === 'yes' ? t.bmStatus === true : t.bmStatus !== true)) &&
+    (!state.search || (t.titel || '').toLowerCase().includes(state.search))
   );
 }
 
