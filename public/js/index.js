@@ -38,6 +38,41 @@ async function onImportFile() {
   }
 }
 
+document.getElementById('export-all-btn').addEventListener('click', () => {
+  window.location.href = api.exportAllProjectsUrl();
+});
+
+const importAllBtn = document.getElementById('import-all-btn');
+const importAllFileInput = document.getElementById('import-all-file-input');
+importAllBtn.addEventListener('click', () => importAllFileInput.click());
+importAllFileInput.addEventListener('change', onImportAllFile);
+
+async function onImportAllFile() {
+  const file = importAllFileInput.files && importAllFileInput.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error('Die Datei ist kein gültiges JSON.');
+    }
+    const result = await api.importAllProjects(data);
+    await loadProjects();
+    const lines = [`${result.imported.length} Projekt(e) importiert.`];
+    if (result.failed.length > 0) {
+      lines.push(`${result.failed.length} fehlgeschlagen:`);
+      result.failed.forEach((f) => lines.push(`– „${f.name}": ${f.error}`));
+    }
+    alert(lines.join('\n'));
+  } catch (err) {
+    alert('Import fehlgeschlagen: ' + err.message);
+  } finally {
+    importAllFileInput.value = '';
+  }
+}
+
 function openModal(project) {
   formErrorEl.textContent = '';
   if (project) {

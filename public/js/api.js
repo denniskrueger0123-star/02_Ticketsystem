@@ -89,4 +89,10 @@ const api = {
   importProject(data) {
     return this.request('POST', '/api/projects/import', data);
   },
+  exportAllProjectsUrl() {
+    return '/api/projects/export-all';
+  },
+  importAllProjects(data) {
+    return this.request('POST', '/api/projects/import-all', data);
+  },
 };

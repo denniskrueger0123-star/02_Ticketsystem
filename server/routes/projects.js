@@ -29,6 +29,28 @@ router.post('/import', async (req, res) => {
   }
 });
 
+// Export/Import ALLER Projekte auf einmal. Müssen ebenfalls VOR
+// '/:projectId' stehen, sonst würden 'export-all'/'import-all' als
+// projectId gedeutet.
+router.get('/export-all', async (req, res) => {
+  const data = await storage.exportAllProjects();
+  const now = new Date(data.exportedAt);
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  res.setHeader('Content-Disposition', `attachment; filename="alle-projekte_${stamp}.json"`);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.send(JSON.stringify(data, null, 2));
+});
+
+router.post('/import-all', async (req, res) => {
+  try {
+    const result = await storage.importAllProjects(req.body);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/:projectId', async (req, res) => {
   const project = await storage.getProject(req.params.projectId);
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });

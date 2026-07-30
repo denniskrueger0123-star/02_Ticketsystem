@@ -270,6 +270,52 @@ async function importProject(data) {
   return { project, ticketCount };
 }
 
+// --- Export / Import (ALLE Projekte in einer JSON-Datei) ---
+
+const MULTI_EXPORT_FORMAT = 'it-ideenforum-multi-export';
+const MULTI_EXPORT_VERSION = 1;
+
+async function exportAllProjects() {
+  const projects = await listProjects();
+  const entries = [];
+  for (const p of projects) {
+    const data = await exportProject(p.id);
+    if (data) entries.push({ project: data.project, tickets: data.tickets });
+  }
+  return {
+    format: MULTI_EXPORT_FORMAT,
+    version: MULTI_EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    projectCount: entries.length,
+    projects: entries,
+  };
+}
+
+// Importiert mehrere Projekte aus einer Gesamt-Export-Datei. Jeder Eintrag
+// wird einzeln über importProject() angelegt; ein fehlerhafter Eintrag
+// bricht den restlichen Import nicht ab, sondern landet in "failed".
+async function importAllProjects(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Die Datei enthält kein gültiges JSON-Objekt.');
+  }
+  const list = Array.isArray(data.projects) ? data.projects : null;
+  if (!list) {
+    throw new Error('Im Import fehlt die Liste "projects".');
+  }
+  const imported = [];
+  const failed = [];
+  for (const entry of list) {
+    const name = (entry && entry.project && entry.project.name) || (entry && entry.name) || '(unbenannt)';
+    try {
+      const result = await importProject(entry);
+      imported.push({ name: result.project.name, ticketCount: result.ticketCount });
+    } catch (err) {
+      failed.push({ name, error: err.message });
+    }
+  }
+  return { imported, failed };
+}
+
 module.exports = {
   listProjects,
   getProject,
@@ -283,4 +329,6 @@ module.exports = {
   deleteTicket,
   exportProject,
   importProject,
+  exportAllProjects,
+  importAllProjects,
 };
