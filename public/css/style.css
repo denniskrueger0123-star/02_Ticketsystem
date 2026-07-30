@@ -352,10 +352,6 @@ footer.pagefoot { padding: 30px 24px 10px; color: var(--ink-soft); font-size: 8p
 .md-preview a { color: var(--accent-2); }
 .md-preview blockquote { border-left: 3px solid var(--line); margin: 6px 0; padding-left: 12px; color: var(--ink-soft); }
 
-/* Readme-Anzeige direkt im Projekt */
-.readme-panel { max-width: 1080px; margin: 0 auto; padding: 6px 24px 0; }
-.readme-panel .md-preview { max-height: none; }
-
 /* ── Idee → Ticket Entwurf ────────────────────────────────────────── */
 .idea-draft { border-top: 1px dashed var(--line); margin-top: 16px; padding-top: 14px; }
 .idea-draft.hidden { display: none; }

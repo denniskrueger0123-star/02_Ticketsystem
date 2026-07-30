@@ -75,10 +75,6 @@
     </div>
   </div>
 
-  <div class="readme-panel hidden" id="readme-panel">
-    <div class="md-preview" id="readme-render"></div>
-  </div>
-
   <section class="overview">
     <h2>Übersicht</h2>
     <p class="hint">Klick auf eine Zeile springt zur Detailkarte weiter unten. Filter oben schränken Übersicht UND Detailkarten gemeinsam ein.</p>
@@ -148,6 +144,17 @@
           <button type="submit" class="btn-primary">Speichern</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="readme-view-modal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h2>📄 Projekt-Readme</h2>
+      <div id="readme-view-render" class="md-preview"></div>
+      <div class="modal-actions">
+        <button type="button" id="readme-view-close-btn">Schließen</button>
+        <button type="button" class="btn-primary" id="readme-view-edit-btn">✏ Bearbeiten</button>
+      </div>
     </div>
   </div>
 

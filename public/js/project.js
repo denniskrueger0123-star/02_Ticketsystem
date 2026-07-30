@@ -32,13 +32,13 @@ const projectEditFormEl = document.getElementById('project-edit-form');
 const peSkillInput = document.getElementById('pe-skill');
 const projectEditErrorEl = document.getElementById('project-edit-error');
 
-// Readme Modal + Anzeige
+// Readme Modal (Bearbeiten) + View-Popup (Lesen)
 const readmeModalEl = document.getElementById('readme-modal');
 const readmeTextInput = document.getElementById('readme-text');
 const readmePreviewEl = document.getElementById('readme-preview');
 const readmeHintEl = document.getElementById('readme-hint');
-const readmePanelEl = document.getElementById('readme-panel');
-const readmeRenderEl = document.getElementById('readme-render');
+const readmeViewModalEl = document.getElementById('readme-view-modal');
+const readmeViewRenderEl = document.getElementById('readme-view-render');
 
 // Idee → Ticket Modal
 const ideaModalEl = document.getElementById('idea-modal');
@@ -109,7 +109,11 @@ async function onProjectEditSubmit(e) {
 }
 
 // ── Projekt-Readme (Teil B) ─────────────────────────────────────────
-document.getElementById('readme-open-btn').addEventListener('click', openReadmeModal);
+document.getElementById('readme-open-btn').addEventListener('click', () => {
+  const md = (projectData && projectData.projektReadme) || '';
+  if (md.trim()) openReadmeViewModal();
+  else openReadmeModal();
+});
 document.getElementById('readme-cancel-btn').addEventListener('click', () => readmeModalEl.classList.add('hidden'));
 document.getElementById('readme-save-btn').addEventListener('click', saveReadme);
 document.getElementById('readme-upload-btn').addEventListener('click', () =>
@@ -117,16 +121,16 @@ document.getElementById('readme-upload-btn').addEventListener('click', () =>
 );
 document.getElementById('readme-file-input').addEventListener('change', onReadmeFile);
 document.getElementById('readme-preview-toggle').addEventListener('click', toggleReadmePreview);
+document.getElementById('readme-view-close-btn').addEventListener('click', () => readmeViewModalEl.classList.add('hidden'));
+document.getElementById('readme-view-edit-btn').addEventListener('click', () => {
+  readmeViewModalEl.classList.add('hidden');
+  openReadmeModal();
+});
 
-function renderReadmePanel() {
+function openReadmeViewModal() {
   const md = (projectData && projectData.projektReadme) || '';
-  if (md.trim()) {
-    readmeRenderEl.innerHTML = renderMarkdown(md);
-    readmePanelEl.classList.remove('hidden');
-  } else {
-    readmeRenderEl.innerHTML = '';
-    readmePanelEl.classList.add('hidden');
-  }
+  readmeViewRenderEl.innerHTML = renderMarkdown(md);
+  readmeViewModalEl.classList.remove('hidden');
 }
 
 function openReadmeModal() {
@@ -176,7 +180,6 @@ async function saveReadme() {
   readmeHintEl.textContent = 'Speichere…';
   try {
     projectData = await api.updateProject(projectId, { projektReadme: readmeTextInput.value });
-    renderReadmePanel();
     readmeModalEl.classList.add('hidden');
   } catch (err) {
     readmeHintEl.className = 'prompt-hint error';
@@ -808,7 +811,6 @@ async function loadModels() {
 (async () => {
   await loadProject();
   if (projectData) {
-    renderReadmePanel();
     await loadModels();
     await loadTickets();
   }
