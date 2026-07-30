@@ -228,3 +228,28 @@ true/false), `claudePrompt` (manuell) sowie `createdAt`/`updatedAt`.
 
 In der Übersichtstabelle im Projekt lässt sich der **Status jedes Tickets direkt
 per Dropdown** umstellen – ohne den Bearbeiten-Dialog zu öffnen.
+
+## Versionierung & Release-ZIP
+
+Die App zeigt ihre aktuelle Version (aus `package.json`, Feld `version`) unten
+im Footer an. **GitHubs eigener „Code → Download ZIP"-Button ist nicht die
+empfohlene Bezugsquelle** – er liefert den Stand eines Branches mit dessen
+Namen im Dateipfad, ohne erkennbare Versionsnummer und ohne installierte
+Abhängigkeiten oder Demo-Daten.
+
+Stattdessen gibt es ein sauber benanntes, lauffähiges Startpaket:
+
+- **Lokal bauen:** `npm run package` erzeugt
+  `dist/IT-Ideenforum-v<version>.zip` – enthält Quellcode, bereits
+  installierte produktive Abhängigkeiten und die Demo-Seed-Daten. Einfach
+  entpacken und `start.bat` doppelklicken.
+- **Als GitHub Release:** Bei jedem gepushten Tag `v<version>` (z. B.
+  `v0.13.0`) baut ein GitHub-Actions-Workflow (`.github/workflows/release.yml`)
+  automatisch dasselbe ZIP und veröffentlicht es auf der Releases-Seite des
+  Repos – dort ist pro Version eindeutig nachvollziehbar, welches ZIP welchem
+  Stand entspricht.
+
+**Ablauf für eine neue Version:**
+1. Version in `package.json` hochzählen und committen.
+2. `git tag v<version>` und `git push origin v<version>`.
+3. Der Workflow baut das ZIP und legt es unter „Releases" ab.

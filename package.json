@@ -1,11 +1,12 @@
 {
   "name": "it-ideenforum",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Lokales IT-Ideenforum / Projekt-Ticket-Dashboard",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "package": "bash scripts/package.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
