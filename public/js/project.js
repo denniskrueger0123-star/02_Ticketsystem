@@ -331,9 +331,30 @@ async function generateBmPrompt() {
   }
 }
 
+// Robuster Clipboard-Zugriff: navigator.clipboard erfordert einen sicheren
+// Kontext (HTTPS/localhost) und ist z.B. bei Zugriff per LAN-IP oder über
+// einen Tunnel ohne festen Fokus nicht verfügbar bzw. schlägt fehl. Fallback
+// über ein verstecktes Textarea + execCommand('copy') deckt diese Fälle ab.
+async function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(ta);
+  if (!ok) throw new Error('execCommand copy fehlgeschlagen');
+}
+
 async function copyBmPrompt() {
   try {
-    await navigator.clipboard.writeText(bmOutputInput.value);
+    await copyToClipboard(bmOutputInput.value);
     bmHintEl.className = 'prompt-hint ok';
     bmHintEl.textContent = 'Kopiert ✓';
   } catch (err) {
@@ -357,6 +378,14 @@ function slug(s) {
 function splitNum(titel) {
   const m = titel.match(/^(#\d+)\s+(.*)$/s);
   return m ? { num: m[1], rest: m[2] } : { num: '', rest: titel };
+}
+
+// Numerisch aufsteigend nach der Ticket-Nummer (z.B. "#001" -> 1); Tickets
+// ohne Nummer landen am Ende.
+function ticketSortValue(t) {
+  const { num } = splitNum(t.titel);
+  const n = num ? parseInt(num.slice(1), 10) : NaN;
+  return Number.isNaN(n) ? Infinity : n;
 }
 
 function matches(t) {
@@ -677,7 +706,7 @@ async function savePrompt(t, ta, hint) {
 
 async function copyPrompt(ta, hint) {
   try {
-    await navigator.clipboard.writeText(ta.value);
+    await copyToClipboard(ta.value);
     hint.className = 'prompt-hint ok';
     hint.textContent = 'Kopiert ✓';
   } catch (err) {
@@ -774,6 +803,7 @@ async function loadProject() {
 }
 async function loadTickets() {
   allTickets = await api.listTickets(projectId);
+  allTickets.sort((a, b) => ticketSortValue(a) - ticketSortValue(b));
   renderStats();
   render();
 }
