@@ -60,7 +60,7 @@ const bmHintEl = document.getElementById('bm-hint');
 
 let projectData = null;
 let allTickets = [];
-const state = { cat: 'all', sev: 'all', st: 'all', bm: 'all', search: '' };
+const state = { cat: 'all', sev: 'all', st: 'all', bm: 'all', search: '', detailview: 'severity' };
 let cards = []; // { ticket, cardEl, rowEl, severity }
 
 const searchInput = document.getElementById('search-input');
@@ -368,7 +368,10 @@ document.querySelectorAll('.chip').forEach((chip) => {
     state[dim] = chip.dataset.val;
     document.querySelectorAll(`.chip[data-dim="${dim}"]`).forEach((c) => c.classList.remove('active'));
     chip.classList.add('active');
-    applyFilters();
+    // Die Detailansicht-Gruppierung ändert die DOM-Struktur der Detailkarten,
+    // ein reines Ein-/Ausblenden über applyFilters() reicht dafür nicht.
+    if (dim === 'detailview') render();
+    else applyFilters();
   });
 });
 
@@ -454,34 +457,47 @@ function render() {
     rowByTicket.set(t.id, tr);
   });
 
-  // Detailkarten nach Schweregrad gruppiert
-  SEV_ORDER.forEach((sev) => {
-    const group = allTickets.filter((t) => t.schweregrad === sev);
-    if (group.length === 0) return;
-
-    const head = document.createElement('div');
-    head.className = 'sevgroup-head';
-    head.dataset.sev = sev;
-    const dot = document.createElement('span');
-    dot.className = `dot dot-${sev}`;
-    const h2 = document.createElement('h2');
-    h2.textContent = sev;
-    const count = document.createElement('span');
-    count.className = 'count';
-    count.textContent = `(${group.length} Tickets)`;
-    head.append(dot, h2, count);
-    detailWrap.appendChild(head);
-
+  // Detailkarten: entweder nach Schweregrad gruppiert, oder als eine
+  // durchgehende, numerisch sortierte Liste (Umschalter "Detailansicht").
+  if (state.detailview === 'number') {
     const container = document.createElement('div');
     container.className = 'cards';
     detailWrap.appendChild(container);
 
-    group.forEach((t) => {
+    allTickets.forEach((t) => {
       const cardEl = buildCard(t);
       container.appendChild(cardEl);
-      cards.push({ ticket: t, cardEl, rowEl: rowByTicket.get(t.id), severity: sev, headEl: head, container });
+      cards.push({ ticket: t, cardEl, rowEl: rowByTicket.get(t.id), severity: 'all', headEl: null, container });
     });
-  });
+  } else {
+    SEV_ORDER.forEach((sev) => {
+      const group = allTickets.filter((t) => t.schweregrad === sev);
+      if (group.length === 0) return;
+
+      const head = document.createElement('div');
+      head.className = 'sevgroup-head';
+      head.dataset.sev = sev;
+      const dot = document.createElement('span');
+      dot.className = `dot dot-${sev}`;
+      const h2 = document.createElement('h2');
+      h2.textContent = sev;
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = `(${group.length} Tickets)`;
+      head.append(dot, h2, count);
+      detailWrap.appendChild(head);
+
+      const container = document.createElement('div');
+      container.className = 'cards';
+      detailWrap.appendChild(container);
+
+      group.forEach((t) => {
+        const cardEl = buildCard(t);
+        container.appendChild(cardEl);
+        cards.push({ ticket: t, cardEl, rowEl: rowByTicket.get(t.id), severity: sev, headEl: head, container });
+      });
+    });
+  }
 
   footEl.textContent = `${projectData.name} · Ideensammlung als Ticketsystem`;
   applyFilters();
@@ -653,8 +669,8 @@ function applyFilters() {
     if (seen.has(severity)) return;
     seen.add(severity);
     const anyVisible = !!groupVisible[severity];
-    headEl.style.display = anyVisible ? '' : 'none';
-    container.style.display = anyVisible ? '' : 'none';
+    if (headEl) headEl.style.display = anyVisible ? '' : 'none';
+    if (container) container.style.display = anyVisible ? '' : 'none';
   });
   counterEl.textContent = `${visible} / ${cards.length} Tickets sichtbar`;
 }
