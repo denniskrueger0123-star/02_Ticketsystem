@@ -39,6 +39,13 @@ echo Der Browser oeffnet sich gleich automatisch.
 echo Zum Beenden dieses Fenster schliessen.
 echo.
 
+REM --- Nur fuer DIESEN Server-Prozess: eine evtl. global gesetzte
+REM     GEMINI_API_KEY-Umgebungsvariable ignorieren, damit stattdessen der
+REM     in den Einstellungen (gemini-key.txt) hinterlegte Key verwendet wird.
+REM     Aendert NICHTS an der globalen Windows-Variable - andere Programme
+REM     auf diesem Rechner sehen weiterhin ihren gewohnten Wert.
+set GEMINI_API_KEY=
+
 REM --- Browser nach kurzer Wartezeit oeffnen, dann Server starten ---
 start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:3000"
 node server/index.js
