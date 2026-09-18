@@ -56,11 +56,12 @@ Browser** und wird nicht in Git mitgeliefert.
 ### API-Keys eintragen: über die Einstellungsseite (empfohlen)
 
 Oben rechts im Header findest du den Link **„⚙ Einstellungen"**
-(<http://localhost:3000/settings.html>). Dort siehst du alle drei Anbieter mit
+(<http://localhost:3000/settings.html>). Dort siehst du alle Anbieter mit
 Status (grüner Punkt = Key hinterlegt), kannst einen Key einfügen, auf
 **„Speichern"** klicken und ihn bei Bedarf wieder **„Löschen"**. Der Key wird
 serverseitig in die passende Datei (`api-key.txt`, `gemini-key.txt`,
-`openai-key.txt`) geschrieben – kein manuelles Anlegen von Dateien mehr nötig.
+`openai-key.txt`, `litellm-key.txt`) geschrieben – kein manuelles Anlegen von
+Dateien mehr nötig.
 
 ### Unterstützte Anbieter & Modelle
 
@@ -69,6 +70,16 @@ serverseitig in die passende Datei (`api-key.txt`, `gemini-key.txt`,
 | Claude (Anthropic) | Haiku 4.5 · Sonnet 5 · Opus 5 | `api-key.txt` | console.anthropic.com |
 | Google Gemini | 3.6 Flash · 2.5 Pro | `gemini-key.txt` | aistudio.google.com (kostenloser Tarif) |
 | OpenAI (ChatGPT) | GPT-4o mini · GPT-4o | `openai-key.txt` | platform.openai.com (pay-per-use) |
+| Firmen-LLM (LiteLLM-Proxy) | frei wählbar, je nach Freigabe | `litellm-key.txt` | vom Arbeitgeber/Admin (virtueller Key + Basis-URL) |
+
+**Firmen-LLM (LiteLLM-Proxy):** Manche Arbeitgeber betreiben einen eigenen
+[LiteLLM](https://www.litellm.ai/)-Proxy-Server, der mehrere KI-Anbieter
+zentral bündelt (Kosten-Tracking, Zugriffskontrolle). Der von dir bekommene
+Key ist dabei **kein** normaler Anthropic-/Gemini-/OpenAI-Key, sondern gilt
+nur gegenüber dem Proxy eurer Firma. Deshalb braucht dieser Anbieter in den
+Einstellungen zusätzlich eine **Basis-URL** (die Adresse eures Proxys, z. B.
+`https://litellm.deinefirma.de`) – frag deinen Admin danach, ebenso nach der
+freigegebenen Modell-ID (Feld „Modell").
 
 **Wichtig zu Gemini Pro:** Google setzt für manche Modelle (z. B. 2.5 Pro) das
 kostenlose Kontingent auf 0, solange kein Billing-Konto mit dem

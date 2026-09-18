@@ -10,6 +10,75 @@ function statusLine(info) {
   return { text: 'Kein Key hinterlegt', cls: 'muted' };
 }
 
+// Basis-URL-Zeile: nur für Anbieter mit eigenem Server (z. B. Firmen-LiteLLM-
+// Proxy). Gibt [label, row, hint] zurück, zum Einfügen in die Card.
+function buildBaseUrlRow(provider, info) {
+  const label = document.createElement('label');
+  label.className = 'settings-sublabel';
+  label.textContent = 'Basis-URL (Adresse eures LiteLLM-Proxys)';
+
+  const row = document.createElement('div');
+  row.className = 'settings-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.value = info.source === 'file' ? info.value : '';
+  input.placeholder = info.source === 'env' ? 'Wird per Umgebungsvariable gesetzt' : 'z. B. https://litellm.deinefirma.de';
+  if (info.source === 'env') input.disabled = true;
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-primary';
+  saveBtn.textContent = 'URL speichern';
+  saveBtn.disabled = info.source === 'env';
+
+  const clearBtn = document.createElement('button');
+  clearBtn.textContent = 'Zurücksetzen';
+  clearBtn.disabled = info.source !== 'file';
+
+  const hint = document.createElement('span');
+  hint.className = 'settings-hint';
+  hint.textContent = info.configured
+    ? (info.source === 'env' ? `Aktiv über Umgebungsvariable ${info.urlEnv}` : `Aktiv: ${info.value}`)
+    : 'Noch keine Basis-URL hinterlegt.';
+  hint.className = `settings-hint ${info.configured ? 'ok' : 'muted'}`;
+
+  saveBtn.addEventListener('click', async () => {
+    if (!input.value.trim()) {
+      hint.className = 'settings-hint error';
+      hint.textContent = 'Bitte zuerst eine Basis-URL eingeben.';
+      return;
+    }
+    hint.className = 'settings-hint';
+    hint.textContent = 'Speichere…';
+    saveBtn.disabled = true;
+    try {
+      await api.saveSettingBaseUrl(provider, input.value.trim());
+      await loadSettings();
+    } catch (err) {
+      hint.className = 'settings-hint error';
+      hint.textContent = err.message;
+      saveBtn.disabled = false;
+    }
+  });
+
+  clearBtn.addEventListener('click', async () => {
+    if (!confirm('Basis-URL wirklich entfernen?')) return;
+    hint.className = 'settings-hint';
+    hint.textContent = 'Entferne…';
+    try {
+      await api.clearSettingBaseUrl(provider);
+      await loadSettings();
+    } catch (err) {
+      hint.className = 'settings-hint error';
+      hint.textContent = err.message;
+    }
+  });
+
+  row.append(input, saveBtn, clearBtn);
+  return [label, row, hint];
+}
+
 function buildCard(provider, info) {
   const card = document.createElement('div');
   card.className = 'settings-card';
@@ -28,6 +97,10 @@ function buildCard(provider, info) {
   status.className = `settings-status ${st.cls}`;
   status.textContent = st.text;
   card.appendChild(status);
+
+  if (info.baseUrl) {
+    card.append(...buildBaseUrlRow(provider, info.baseUrl));
+  }
 
   const row = document.createElement('div');
   row.className = 'settings-row';

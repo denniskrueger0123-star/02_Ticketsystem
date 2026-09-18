@@ -9,10 +9,20 @@ const Anthropic = require('@anthropic-ai/sdk');
 const ROOT = path.join(__dirname, '..', '..');
 
 // ── Anbieter: je ein Key-File + eine Umgebungsvariable ──────────────
+// litellm hat zusätzlich eine Basis-URL (baseUrlFile/baseUrlEnv), weil es kein
+// fester Anbieter ist, sondern ein selbst betriebener Proxy (z. B. vom
+// Arbeitgeber) mit eigener Adresse.
 const PROVIDERS = {
   anthropic: { label: 'Claude (Anthropic)', keyFile: 'api-key.txt', keyEnv: 'ANTHROPIC_API_KEY' },
   google: { label: 'Google Gemini', keyFile: 'gemini-key.txt', keyEnv: 'GEMINI_API_KEY' },
   openai: { label: 'OpenAI (ChatGPT)', keyFile: 'openai-key.txt', keyEnv: 'OPENAI_API_KEY' },
+  litellm: {
+    label: 'Firmen-LLM (LiteLLM-Proxy)',
+    keyFile: 'litellm-key.txt',
+    keyEnv: 'LITELLM_API_KEY',
+    baseUrlFile: 'litellm-url.txt',
+    baseUrlEnv: 'LITELLM_BASE_URL',
+  },
 };
 
 // ── Wählbare Modelle (id = das, was an die jeweilige API geht) ──────
@@ -280,6 +290,18 @@ function settingsStatus() {
     const envKey = process.env[cfg.keyEnv] && process.env[cfg.keyEnv].trim();
     const fileKey = readFileKey(id);
     const source = envKey ? 'env' : fileKey ? 'file' : null;
+    let baseUrl = null;
+    if (cfg.baseUrlFile) {
+      const envUrl = cfg.baseUrlEnv && process.env[cfg.baseUrlEnv] && process.env[cfg.baseUrlEnv].trim();
+      const fileUrl = readBaseUrlFile(id);
+      const urlSource = envUrl ? 'env' : fileUrl ? 'file' : null;
+      baseUrl = {
+        configured: !!urlSource,
+        source: urlSource,
+        value: normalizeBaseUrl(envUrl || fileUrl || ''),
+        urlEnv: cfg.baseUrlEnv,
+      };
+    }
     out[id] = {
       label: cfg.label,
       keyEnv: cfg.keyEnv,
@@ -290,6 +312,7 @@ function settingsStatus() {
       exampleModel: exampleModelFor(id),
       fetchedCount: (fetched[id] && Array.isArray(fetched[id].models) && fetched[id].models.length) || 0,
       fetchedAt: (fetched[id] && fetched[id].fetchedAt) || null,
+      baseUrl,
     };
   }
   return out;
@@ -308,6 +331,52 @@ function clearKey(provider) {
   if (!cfg) throw new LlmError('Unbekannter Anbieter.', 'BAD_PROVIDER');
   try {
     fs.unlinkSync(path.join(ROOT, cfg.keyFile));
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+}
+
+// ── Basis-URL: nur für Anbieter mit eigenem Server (z. B. litellm) ──
+function normalizeBaseUrl(url) {
+  return (url || '').trim().replace(/\/+$/, '');
+}
+
+function readBaseUrlFile(provider) {
+  const cfg = PROVIDERS[provider];
+  if (!cfg || !cfg.baseUrlFile) return '';
+  try {
+    return fs.readFileSync(path.join(ROOT, cfg.baseUrlFile), 'utf-8').trim();
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+    return '';
+  }
+}
+
+function resolveBaseUrl(provider) {
+  const cfg = PROVIDERS[provider];
+  if (!cfg || !cfg.baseUrlFile) return '';
+  const envUrl = cfg.baseUrlEnv && process.env[cfg.baseUrlEnv] && process.env[cfg.baseUrlEnv].trim();
+  if (envUrl) return normalizeBaseUrl(envUrl);
+  const fileUrl = readBaseUrlFile(provider);
+  return fileUrl ? normalizeBaseUrl(fileUrl) : '';
+}
+
+function saveBaseUrl(provider, url) {
+  const cfg = PROVIDERS[provider];
+  if (!cfg || !cfg.baseUrlFile) throw new LlmError('Dieser Anbieter benötigt keine Basis-URL.', 'BAD_PROVIDER');
+  const trimmed = normalizeBaseUrl(url);
+  if (!trimmed) throw new LlmError('Keine Basis-URL übergeben.', 'BAD_URL');
+  if (!/^https?:\/\//i.test(trimmed)) {
+    throw new LlmError('Basis-URL muss mit http:// oder https:// beginnen.', 'BAD_URL');
+  }
+  fs.writeFileSync(path.join(ROOT, cfg.baseUrlFile), trimmed + '\n', 'utf-8');
+}
+
+function clearBaseUrl(provider) {
+  const cfg = PROVIDERS[provider];
+  if (!cfg || !cfg.baseUrlFile) return;
+  try {
+    fs.unlinkSync(path.join(ROOT, cfg.baseUrlFile));
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
   }
@@ -403,7 +472,37 @@ async function callOpenAI(model, key, system, user) {
   return data.choices?.[0]?.message?.content || '';
 }
 
-const CALLERS = { anthropic: callAnthropic, google: callGemini, openai: callOpenAI };
+// LiteLLM-Proxy spricht OpenAI-kompatibles Format, aber unter einer selbst
+// gehosteten Basis-URL (z. B. der Firmen-Server) statt api.openai.com.
+async function callLiteLLM(model, key, system, user) {
+  const baseUrl = resolveBaseUrl('litellm');
+  if (!baseUrl) {
+    throw new LlmError(
+      'Keine Basis-URL für den LiteLLM-Proxy hinterlegt. Trag in den Einstellungen die Adresse ' +
+        'eures LiteLLM-Servers ein (z. B. https://litellm.deinefirma.de).',
+      'NO_BASE_URL'
+    );
+  }
+  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: model.id,
+      max_tokens: 2048,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new LlmError(`LiteLLM-Proxy-Fehler: ${data.error?.message || res.statusText}`, 'API_ERROR');
+  }
+  return data.choices?.[0]?.message?.content || '';
+}
+
+const CALLERS = { anthropic: callAnthropic, google: callGemini, openai: callOpenAI, litellm: callLiteLLM };
 
 // ── Modell-Listen der Anbieter abrufen ──────────────────────────────
 // Jeder Fetcher liefert [{ id, label }] mit textgenerierungsfähigen Modellen.
@@ -465,10 +564,30 @@ async function fetchOpenAIModels(key) {
     .map((id) => ({ id, label: id }));
 }
 
+async function fetchLiteLLMModels(key) {
+  const baseUrl = resolveBaseUrl('litellm');
+  if (!baseUrl) {
+    throw new LlmError('Keine Basis-URL für den LiteLLM-Proxy hinterlegt.', 'NO_BASE_URL');
+  }
+  const res = await fetch(`${baseUrl}/v1/models`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new LlmError(`LiteLLM-Proxy antwortet: ${data.error?.message || res.statusText}`, 'FETCH_ERROR');
+  }
+  return (data.data || [])
+    .map((m) => m && m.id)
+    .filter(Boolean)
+    .sort()
+    .map((id) => ({ id, label: id }));
+}
+
 const MODEL_FETCHERS = {
   anthropic: fetchAnthropicModels,
   google: fetchGeminiModels,
   openai: fetchOpenAIModels,
+  litellm: fetchLiteLLMModels,
 };
 
 // Ruft die Modell-Liste eines Anbieters ab und legt sie lokal ab.
@@ -668,6 +787,8 @@ module.exports = {
   saveSystemPrompt,
   saveKey,
   clearKey,
+  saveBaseUrl,
+  clearBaseUrl,
   saveCustomModel,
   fetchProviderModels,
   LlmError,

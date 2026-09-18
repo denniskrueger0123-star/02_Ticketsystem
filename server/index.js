@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
-const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveCustomModel, fetchProviderModels, DEFAULT_MODEL, LlmError } = require('./lib/llm');
+const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveBaseUrl, clearBaseUrl, saveCustomModel, fetchProviderModels, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 
@@ -63,6 +63,29 @@ app.delete('/api/settings/:provider', (req, res) => {
     res.json({ providers: settingsStatus() });
   } catch (err) {
     res.status(500).json({ error: 'Interner Fehler beim Löschen.' });
+  }
+});
+
+// Basis-URL für Anbieter mit eigenem Server (z. B. Firmen-LiteLLM-Proxy)
+app.post('/api/settings/:provider/base-url', (req, res) => {
+  try {
+    saveBaseUrl(req.params.provider, req.body.url);
+    res.json({ providers: settingsStatus() });
+  } catch (err) {
+    if (err instanceof LlmError) {
+      res.status(400).json({ error: err.message, code: err.code });
+    } else {
+      res.status(500).json({ error: 'Interner Fehler beim Speichern der Basis-URL.' });
+    }
+  }
+});
+
+app.delete('/api/settings/:provider/base-url', (req, res) => {
+  try {
+    clearBaseUrl(req.params.provider);
+    res.json({ providers: settingsStatus() });
+  } catch (err) {
+    res.status(500).json({ error: 'Interner Fehler beim Löschen der Basis-URL.' });
   }
 });
 

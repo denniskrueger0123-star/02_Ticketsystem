@@ -69,6 +69,12 @@ const api = {
   clearSetting(provider) {
     return this.request('DELETE', `/api/settings/${provider}`);
   },
+  saveSettingBaseUrl(provider, url) {
+    return this.request('POST', `/api/settings/${provider}/base-url`, { url });
+  },
+  clearSettingBaseUrl(provider) {
+    return this.request('DELETE', `/api/settings/${provider}/base-url`);
+  },
   saveSettingModel(provider, model) {
     return this.request('POST', `/api/settings/${provider}/model`, { model });
   },

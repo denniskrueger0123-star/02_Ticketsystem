@@ -4,6 +4,8 @@ dist/
 api-key.txt
 gemini-key.txt
 openai-key.txt
+litellm-key.txt
+litellm-url.txt
 custom-models.json
 system-prompts.json
 fetched-models.json
