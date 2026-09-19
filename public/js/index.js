@@ -119,7 +119,12 @@ async function onSubmit(e) {
 
 async function deleteProject(project) {
   if (!confirm(`Projekt "${project.name}" inkl. aller Tickets wirklich löschen?`)) return;
-  await api.deleteProject(project.id);
+  try {
+    await api.deleteProject(project.id);
+  } catch (err) {
+    alert(`Löschen fehlgeschlagen: ${err.message}`);
+    return;
+  }
   await loadProjects();
 }
 

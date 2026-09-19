@@ -93,9 +93,23 @@ router.put('/:projectId', async (req, res) => {
 });
 
 router.delete('/:projectId', async (req, res) => {
-  const deleted = await storage.deleteProject(req.params.projectId);
-  if (!deleted) return res.status(404).json({ error: 'Projekt nicht gefunden' });
-  res.status(204).end();
+  // Ohne try/catch beendet Express 4 eine fehlgeschlagene async-Route nicht,
+  // sondern lässt sie als unbehandelte Rejection den Serverprozess abbrechen –
+  // im Browser passiert dann sichtbar gar nichts.
+  try {
+    const deleted = await storage.deleteProject(req.params.projectId);
+    if (!deleted) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    res.status(204).end();
+  } catch (err) {
+    const locked = err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'ENOTEMPTY';
+    res.status(500).json({
+      error: locked
+        ? 'Der Projektordner ist gerade gesperrt (z. B. durch OneDrive-Synchronisierung, ' +
+          'einen Virenscanner oder ein geöffnetes Fenster). Kurz warten und erneut löschen – ' +
+          'oder den Projektordner aus der OneDrive-Synchronisierung nehmen.'
+        : `Projekt konnte nicht gelöscht werden: ${err.message}`,
+    });
+  }
 });
 
 // Boss Move: aus allen grün markierten Tickets EINEN Super-Prompt generieren

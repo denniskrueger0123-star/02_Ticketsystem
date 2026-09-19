@@ -100,7 +100,9 @@ async function updateProject(projectId, { name, description, promptSkill, bmProm
 async function deleteProject(projectId) {
   const project = await getProject(projectId);
   if (!project) return false;
-  await fs.rm(projectDir(projectId), { recursive: true, force: true });
+  // maxRetries/retryDelay: unter Windows sperren OneDrive-Sync und Virenscanner
+  // Dateien kurzzeitig (EPERM/EBUSY), wodurch das Löschen sonst hart scheitert.
+  await fs.rm(projectDir(projectId), { recursive: true, force: true, maxRetries: 5, retryDelay: 150 });
   return true;
 }
 
