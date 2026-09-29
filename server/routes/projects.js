@@ -18,11 +18,22 @@ router.post('/', async (req, res) => {
   res.status(201).json(project);
 });
 
-// Import: legt aus einer hochgeladenen Export-Datei ein neues Projekt an.
-// Muss VOR '/:projectId' stehen, sonst würde 'import' als projectId gedeutet.
+// Import: legt aus einer hochgeladenen Export-Datei ein neues Projekt an oder
+// hängt/ersetzt Tickets in einem Zielprojekt (Query ?mode=…&targetProjectId=…,
+// der Body bleibt die Datei). Muss VOR '/:projectId' stehen, sonst würde
+// 'import' als projectId gedeutet.
 router.post('/import', async (req, res) => {
+  // Ohne try/catch würde eine fehlgeschlagene async-Route in Express 4 den Prozess abbrechen.
   try {
-    const result = await storage.importProject(req.body);
+    const mode = req.query.mode === undefined ? 'new' : String(req.query.mode);
+    const targetProjectId = req.query.targetProjectId ? String(req.query.targetProjectId) : '';
+    if (!['new', 'append', 'replace'].includes(mode)) {
+      return res.status(400).json({ error: 'Ungültiger Import-Modus.' });
+    }
+    if (mode !== 'new' && !targetProjectId) {
+      return res.status(400).json({ error: 'Für Anhängen/Ersetzen muss ein Zielprojekt angegeben werden.' });
+    }
+    const result = await storage.importProject(req.body, { mode, targetProjectId });
     res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

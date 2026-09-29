@@ -17,6 +17,40 @@ const importFileInput = document.getElementById('import-file-input');
 importBtn.addEventListener('click', () => importFileInput.click());
 importFileInput.addEventListener('change', onImportFile);
 
+const importModalEl = document.getElementById('import-modal');
+const importTargetEl = document.getElementById('import-target');
+const importHintEl = document.getElementById('import-hint');
+const importConfirmBtn = document.getElementById('import-confirm-btn');
+const importModeEls = document.querySelectorAll('input[name="import-mode"]');
+// Geparste Datei bleibt hier, bis der Dialog bestätigt oder abgebrochen wird –
+// so genügen einmal registrierte Listener.
+let pendingImportData = null;
+
+const IMPORT_HINTS = {
+  new: '',
+  append: 'Tickets werden hinzugefügt, Nummern werden fortlaufend neu vergeben.',
+  replace: 'Alle bestehenden Tickets des Zielprojekts werden gelöscht.',
+};
+
+function selectedImportMode() {
+  return document.querySelector('input[name="import-mode"]:checked').value;
+}
+
+function updateImportModeUi() {
+  const mode = selectedImportMode();
+  importTargetEl.disabled = mode === 'new';
+  importHintEl.textContent = IMPORT_HINTS[mode];
+}
+
+function closeImportModal() {
+  importModalEl.classList.add('hidden');
+  pendingImportData = null;
+}
+
+importModeEls.forEach((el) => el.addEventListener('change', updateImportModeUi));
+document.getElementById('import-cancel-btn').addEventListener('click', closeImportModal);
+importConfirmBtn.addEventListener('click', onImportConfirm);
+
 async function onImportFile() {
   const file = importFileInput.files && importFileInput.files[0];
   if (!file) return;
@@ -28,13 +62,53 @@ async function onImportFile() {
     } catch (e) {
       throw new Error('Die Datei ist kein gültiges JSON.');
     }
-    const result = await api.importProject(data);
-    await loadProjects();
-    alert(`Importiert: „${result.project.name}" mit ${result.ticketCount} Ticket(s) als neues Projekt.`);
+    const projects = await api.listProjects();
+    importTargetEl.innerHTML = '';
+    for (const p of projects) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      importTargetEl.appendChild(opt);
+    }
+    document.querySelector('input[name="import-mode"][value="new"]').checked = true;
+    updateImportModeUi();
+    pendingImportData = data;
+    importModalEl.classList.remove('hidden');
   } catch (err) {
     alert('Import fehlgeschlagen: ' + err.message);
   } finally {
     importFileInput.value = '';
+  }
+}
+
+async function onImportConfirm() {
+  if (!pendingImportData) return;
+  const mode = selectedImportMode();
+  const targetProjectId = mode === 'new' ? undefined : importTargetEl.value;
+  if (mode !== 'new' && !targetProjectId) {
+    alert('Bitte ein Zielprojekt wählen.');
+    return;
+  }
+  importConfirmBtn.disabled = true;
+  try {
+    if (mode === 'replace') {
+      const existing = await api.listTickets(targetProjectId);
+      if (!confirm(`${existing.length} Tickets werden gelöscht. Unwiderruflich.`)) return;
+    }
+    const result = await api.importProject(pendingImportData, { mode, targetProjectId });
+    closeImportModal();
+    await loadProjects();
+    if (mode === 'append') {
+      alert(`„${result.project.name}": ${result.ticketCount} Ticket(s) angehängt.`);
+    } else if (mode === 'replace') {
+      alert(`„${result.project.name}": ${result.deletedCount} Ticket(s) gelöscht, ${result.ticketCount} importiert.`);
+    } else {
+      alert(`Importiert: „${result.project.name}" mit ${result.ticketCount} Ticket(s) als neues Projekt.`);
+    }
+  } catch (err) {
+    alert('Import fehlgeschlagen: ' + err.message);
+  } finally {
+    importConfirmBtn.disabled = false;
   }
 }
 

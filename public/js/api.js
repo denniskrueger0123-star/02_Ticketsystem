@@ -92,8 +92,10 @@ const api = {
   exportProjectUrl(projectId) {
     return `/api/projects/${encodeURIComponent(projectId)}/export`;
   },
-  importProject(data) {
-    return this.request('POST', '/api/projects/import', data);
+  importProject(data, { mode = 'new', targetProjectId } = {}) {
+    let query = `?mode=${encodeURIComponent(mode)}`;
+    if (targetProjectId) query += `&targetProjectId=${encodeURIComponent(targetProjectId)}`;
+    return this.request('POST', `/api/projects/import${query}`, data);
   },
   exportAllProjectsUrl() {
     return '/api/projects/export-all';

@@ -82,7 +82,7 @@ async function createProject({ name, description, promptSkill, bmPromptSkill, bm
   return project;
 }
 
-async function updateProject(projectId, { name, description, promptSkill, bmPromptSkill, bmPrompt, projektReadme, lastExportedAt }) {
+async function updateProject(projectId, { name, description, promptSkill, bmPromptSkill, bmPrompt, projektReadme, lastExportedAt, importedAt }) {
   const project = await getProject(projectId);
   if (!project) return null;
   if (name !== undefined) project.name = name;
@@ -92,6 +92,7 @@ async function updateProject(projectId, { name, description, promptSkill, bmProm
   if (bmPrompt !== undefined) project.bmPrompt = bmPrompt;
   if (projektReadme !== undefined) project.projektReadme = projektReadme;
   if (lastExportedAt !== undefined) project.lastExportedAt = lastExportedAt;
+  if (importedAt !== undefined) project.importedAt = importedAt;
   project.updatedAt = new Date().toISOString();
   await writeJson(projectFile(projectId), project);
   return project;
@@ -165,6 +166,7 @@ async function createTicket(projectId, data) {
     status: data.status || 'Offen',
     bmStatus: data.bmStatus === true,
     claudePrompt: data.claudePrompt || '',
+    importedAt: data.importedAt || null,
     createdAt: now,
     updatedAt: now,
   };
@@ -228,48 +230,79 @@ async function exportProject(projectId) {
   };
 }
 
-// Legt aus einem Export-Objekt ein NEUES Projekt an (überschreibt nie ein
-// bestehendes – so kann beim Import nichts verloren gehen). Akzeptiert sowohl
-// deutsche als auch englische Feldnamen, damit extern bearbeitete Dateien
-// tolerant eingelesen werden.
-async function importProject(data) {
+// Importiert ein Export-Objekt. Modus "new" legt ein NEUES Projekt an, "append"
+// hängt die Tickets an ein bestehendes Projekt an, "replace" löscht dessen
+// Tickets vorher. Akzeptiert sowohl deutsche als auch englische Feldnamen,
+// damit extern bearbeitete Dateien tolerant eingelesen werden.
+async function importProject(data, { mode = 'new', targetProjectId } = {}) {
+  if (!['new', 'append', 'replace'].includes(mode)) {
+    const err = new Error('Ungültiger Import-Modus.');
+    err.code = 'BAD_MODE';
+    throw err;
+  }
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     throw new Error('Die Datei enthält kein gültiges JSON-Objekt.');
   }
   const src = data.project && typeof data.project === 'object' ? data.project : data;
-  const name = String(src.name || '').trim();
-  if (!name) {
-    throw new Error('Im Import fehlt der Projektname (Feld "name").');
-  }
   let ticketsSrc = data.tickets;
   if (!Array.isArray(ticketsSrc)) ticketsSrc = Array.isArray(src.tickets) ? src.tickets : [];
 
-  const project = await createProject({
-    name,
-    description: src.description || '',
-    promptSkill: src.promptSkill || '',
-    bmPromptSkill: src.bmPromptSkill || '',
-    bmPrompt: src.bmPrompt || '',
-    projektReadme: src.projektReadme || '',
-    importedAt: new Date().toISOString(),
-  });
+  const now = new Date().toISOString();
+  let project;
+  let deletedCount = 0;
+
+  if (mode === 'new') {
+    const name = String(src.name || '').trim();
+    if (!name) {
+      throw new Error('Im Import fehlt der Projektname (Feld "name").');
+    }
+    project = await createProject({
+      name,
+      description: src.description || '',
+      promptSkill: src.promptSkill || '',
+      bmPromptSkill: src.bmPromptSkill || '',
+      bmPrompt: src.bmPrompt || '',
+      projektReadme: src.projektReadme || '',
+      importedAt: now,
+    });
+  } else {
+    project = targetProjectId ? await getProject(targetProjectId) : null;
+    if (!project) {
+      const err = new Error('Zielprojekt nicht gefunden.');
+      err.code = 'BAD_TARGET';
+      throw err;
+    }
+    if (mode === 'replace') {
+      const existing = (await listTickets(project.id)) || [];
+      for (const t of existing) {
+        if (await deleteTicket(project.id, t.id)) deletedCount++;
+      }
+    }
+  }
 
   let ticketCount = 0;
   for (const t of ticketsSrc) {
     if (!t || typeof t !== 'object') continue;
+    let titel = t.titel || t.title || '';
+    // Alte Nummer entfernen, damit createTicket fortlaufend neu nummeriert
+    // (sonst gäbe es beim Anhängen doppelte Nummern).
+    if (mode !== 'new') titel = String(titel).replace(/^#\d+\s+/, '');
     await createTicket(project.id, {
-      titel: t.titel || t.title || '',
+      titel,
       beschreibung: t.beschreibung || t.description || '',
       kategorie: t.kategorie || t.category || '',
       schweregrad: t.schweregrad || t.severity || '',
       status: t.status || 'Offen',
       bmStatus: t.bmStatus === true,
       claudePrompt: t.claudePrompt || t.prompt || '',
+      importedAt: now,
     });
     ticketCount++;
   }
 
-  return { project, ticketCount };
+  if (mode !== 'new') project = await updateProject(project.id, { importedAt: now });
+
+  return { project, ticketCount, mode, deletedCount };
 }
 
 // --- Export / Import (ALLE Projekte in einer JSON-Datei) ---
