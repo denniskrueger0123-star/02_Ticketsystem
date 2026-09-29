@@ -60,12 +60,15 @@ const bmHintEl = document.getElementById('bm-hint');
 
 let projectData = null;
 let allTickets = [];
-const state = { cat: 'all', sev: 'all', st: 'all', bm: 'all', search: '', detailview: 'severity' };
+// Mehrfachauswahl: leeres Array = kein Filter; detailview bleibt Single-Select.
+const MULTI_DIMS = ['cat', 'sev', 'st', 'bm'];
+const state = { cat: [], sev: [], st: [], bm: [], search: '', detailview: 'severity' };
 let cards = []; // { ticket, cardEl, rowEl, severity }
 
 const searchInput = document.getElementById('search-input');
 searchInput.addEventListener('input', () => {
   state.search = searchInput.value.trim().toLowerCase();
+  persistFilters();
   applyFilters();
 });
 
@@ -362,9 +365,65 @@ async function copyBmPrompt() {
     bmHintEl.textContent = 'Kopieren fehlgeschlagen';
   }
 }
+function syncChipUi(dim) {
+  document.querySelectorAll(`.chip[data-dim="${dim}"]`).forEach((c) => {
+    const val = c.dataset.val;
+    c.classList.toggle('active', val === 'all' ? state[dim].length === 0 : state[dim].includes(val));
+  });
+}
+
+const filterKey = `ideenforum.filters.${projectId}`;
+function persistFilters() {
+  try {
+    const { cat, sev, st, bm } = state;
+    // Originalschreibweise speichern; state.search ist bewusst lowercase.
+    localStorage.setItem(filterKey, JSON.stringify({ cat, sev, st, bm, search: searchInput.value }));
+  } catch (err) {
+    // localStorage nicht verfügbar – Filter gelten dann nur für diese Sitzung
+  }
+}
+
+function restoreFilters() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(filterKey));
+  } catch (err) {
+    saved = null;
+  }
+  if (!saved || typeof saved !== 'object') saved = {};
+  MULTI_DIMS.forEach((dim) => {
+    const raw = saved[dim];
+    // Ältere Versionen speicherten einen einzelnen String ('all' oder ein Wert).
+    let vals = [];
+    if (Array.isArray(raw)) vals = raw;
+    else if (typeof raw === 'string' && raw !== 'all') vals = [raw];
+    // Nur Werte mit existierendem Chip, sonst würde ein veralteter Wert alles ausblenden.
+    state[dim] = vals.filter(
+      (v) => typeof v === 'string' && v !== 'all' && document.querySelector(`.chip[data-dim="${dim}"][data-val="${v}"]`)
+    );
+    syncChipUi(dim);
+  });
+  if (typeof saved.search === 'string') {
+    searchInput.value = saved.search;
+    state.search = saved.search.trim().toLowerCase();
+  } else {
+    searchInput.value = state.search;
+  }
+}
+
 document.querySelectorAll('.chip').forEach((chip) => {
   chip.addEventListener('click', () => {
     const dim = chip.dataset.dim;
+    if (MULTI_DIMS.includes(dim)) {
+      const val = chip.dataset.val;
+      if (val === 'all') state[dim] = [];
+      else if (state[dim].includes(val)) state[dim] = state[dim].filter((v) => v !== val);
+      else state[dim] = [...state[dim], val];
+      syncChipUi(dim);
+      persistFilters();
+      applyFilters();
+      return;
+    }
     state[dim] = chip.dataset.val;
     document.querySelectorAll(`.chip[data-dim="${dim}"]`).forEach((c) => c.classList.remove('active'));
     chip.classList.add('active');
@@ -373,6 +432,26 @@ document.querySelectorAll('.chip').forEach((chip) => {
     if (dim === 'detailview') render();
     else applyFilters();
   });
+});
+
+document.querySelectorAll('.chip-reset[data-reset]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const dim = btn.dataset.reset;
+    state[dim] = [];
+    syncChipUi(dim);
+    persistFilters();
+    applyFilters();
+  });
+});
+document.getElementById('filters-reset-all').addEventListener('click', () => {
+  MULTI_DIMS.forEach((dim) => {
+    state[dim] = [];
+    syncChipUi(dim);
+  });
+  state.search = '';
+  searchInput.value = '';
+  persistFilters();
+  applyFilters();
 });
 
 function slug(s) {
@@ -393,10 +472,10 @@ function ticketSortValue(t) {
 
 function matches(t) {
   return (
-    (state.cat === 'all' || t.kategorie === state.cat) &&
-    (state.sev === 'all' || t.schweregrad === state.sev) &&
-    (state.st === 'all' || t.status === state.st) &&
-    (state.bm === 'all' || (state.bm === 'yes' ? t.bmStatus === true : t.bmStatus !== true)) &&
+    (state.cat.length === 0 || state.cat.includes(t.kategorie)) &&
+    (state.sev.length === 0 || state.sev.includes(t.schweregrad)) &&
+    (state.st.length === 0 || state.st.includes(t.status)) &&
+    (state.bm.length === 0 || state.bm.includes(t.bmStatus === true ? 'yes' : 'no')) &&
     (!state.search || (t.titel || '').toLowerCase().includes(state.search))
   );
 }
@@ -857,6 +936,7 @@ async function loadModels() {
 (async () => {
   await loadProject();
   if (projectData) {
+    restoreFilters();
     await loadModels();
     await loadTickets();
   }

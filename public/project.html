@@ -34,6 +34,7 @@
       <div class="filterrow">
         <span class="fr-label">Suche</span>
         <input type="search" id="search-input" class="search-input" placeholder="Titel durchsuchen…" />
+        <button id="filters-reset-all" class="chip-reset" type="button">Alle Filter zurücksetzen</button>
       </div>
       <div class="filterrow">
         <span class="fr-label">Kategorie</span>
@@ -42,6 +43,7 @@
         <button class="chip" data-dim="cat" data-val="Backend">Backend</button>
         <button class="chip" data-dim="cat" data-val="Infrastruktur">Infrastruktur</button>
         <button class="chip" data-dim="cat" data-val="Prozess">Prozess</button>
+        <button class="chip-reset" data-reset="cat" type="button">Zurücksetzen</button>
         <span class="ai-picker">
           <label for="model-select">KI-Modell</label>
           <select id="model-select" class="model-select"></select>
@@ -56,6 +58,7 @@
         <button class="chip" data-dim="sev" data-val="Mittel">Mittel</button>
         <button class="chip" data-dim="sev" data-val="Klein">Klein</button>
         <button class="chip" data-dim="sev" data-val="Recherche">Recherche</button>
+        <button class="chip-reset" data-reset="sev" type="button">Zurücksetzen</button>
       </div>
       <div class="filterrow">
         <span class="fr-label">Status</span>
@@ -64,6 +67,7 @@
         <button class="chip" data-dim="st" data-val="In Arbeit">In Arbeit</button>
         <button class="chip" data-dim="st" data-val="Erledigt">Erledigt</button>
         <button class="chip" data-dim="st" data-val="Zurückgestellt">Zurückgestellt</button>
+        <button class="chip-reset" data-reset="st" type="button">Zurücksetzen</button>
         <span class="filter-counter" id="counter"></span>
       </div>
       <div class="filterrow">
@@ -71,6 +75,7 @@
         <button class="chip active" data-dim="bm" data-val="all">Alle</button>
         <button class="chip" data-dim="bm" data-val="yes">🟢 Grün</button>
         <button class="chip" data-dim="bm" data-val="no">— Nicht</button>
+        <button class="chip-reset" data-reset="bm" type="button">Zurücksetzen</button>
       </div>
       <div class="filterrow">
         <span class="fr-label">Detailansicht</span>
