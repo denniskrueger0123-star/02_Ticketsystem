@@ -1,5 +1,6 @@
 const express = require('express');
 const storage = require('../lib/storage');
+const { scheduleBackup } = require('../lib/backup');
 const { generatePrompt } = require('../lib/llm');
 
 const router = express.Router({ mergeParams: true });
@@ -17,6 +18,7 @@ router.post('/', async (req, res) => {
   }
   const ticket = await storage.createTicket(req.params.projectId, req.body);
   if (!ticket) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+  scheduleBackup();
   res.status(201).json(ticket);
 });
 
@@ -33,12 +35,14 @@ router.put('/:ticketId', async (req, res) => {
   }
   const ticket = await storage.updateTicket(req.params.projectId, req.params.ticketId, req.body);
   if (!ticket) return res.status(404).json({ error: 'Ticket nicht gefunden' });
+  scheduleBackup();
   res.json(ticket);
 });
 
 router.delete('/:ticketId', async (req, res) => {
   const deleted = await storage.deleteTicket(req.params.projectId, req.params.ticketId);
   if (!deleted) return res.status(404).json({ error: 'Ticket nicht gefunden' });
+  scheduleBackup();
   res.status(204).end();
 });
 
@@ -54,6 +58,7 @@ router.post('/:ticketId/generate-prompt', async (req, res) => {
     const updated = await storage.updateTicket(req.params.projectId, req.params.ticketId, {
       claudePrompt,
     });
+    scheduleBackup();
     res.json(updated);
   } catch (err) {
     const status = err.code === 'NO_KEY' ? 501 : 502;

@@ -271,3 +271,34 @@ async function loadProjects() {
 }
 
 loadProjects();
+
+const backupBtn = document.getElementById('backup-btn');
+const backupStatusEl = document.getElementById('backup-status');
+
+async function loadBackupStatus() {
+  try {
+    const { letztesBackup } = await api.getBackupStatus();
+    const zeit = letztesBackup && fmtDateTime(letztesBackup.zeitpunkt);
+    backupStatusEl.textContent = zeit ? `Letztes Backup: ${zeit}` : 'Noch kein Backup vorhanden.';
+  } catch (err) {
+    backupStatusEl.textContent = '';
+  }
+}
+
+backupBtn.addEventListener('click', async () => {
+  backupBtn.disabled = true;
+  backupStatusEl.classList.remove('error');
+  backupStatusEl.textContent = 'Sichere…';
+  try {
+    const r = await api.createBackup();
+    backupStatusEl.textContent =
+      `Backup gespeichert: ${r.anzahlProjekte} Projekt(e), ${r.anzahlTickets} Ticket(s) – ${fmtDateTime(r.zeitpunkt)}`;
+  } catch (err) {
+    backupStatusEl.classList.add('error');
+    backupStatusEl.textContent = 'Backup fehlgeschlagen: ' + err.message;
+  } finally {
+    backupBtn.disabled = false;
+  }
+});
+
+loadBackupStatus();

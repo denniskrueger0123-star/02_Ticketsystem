@@ -351,7 +351,67 @@ async function importAllProjects(data) {
   return { imported, failed };
 }
 
+// --- Backups (Gesamt-Export als Datei unter data/backups) ---
+
+// Neben (nicht in) data/projects, damit der Ordner nie als Projekt gelistet wird.
+const BACKUP_DIR = path.join(DATA_DIR, '..', 'backups');
+const PROJECT_ROOT = path.join(__dirname, '..', '..');
+const BACKUP_NAME_RE = /^backup-.*\.json$/;
+
+async function listBackupFiles() {
+  try {
+    const names = await fs.readdir(BACKUP_DIR);
+    // ISO-Zeitstempel im Namen sortieren chronologisch; .tmp-Reste bleiben außen vor.
+    return names.filter((n) => BACKUP_NAME_RE.test(n)).sort();
+  } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    throw err;
+  }
+}
+
+async function createBackup() {
+  const data = await exportAllProjects();
+  await fs.mkdir(BACKUP_DIR, { recursive: true });
+  const name = `backup-${data.exportedAt.replace(/[:.]/g, '-')}.json`;
+  const target = path.join(BACKUP_DIR, name);
+  // Erst .tmp schreiben, dann umbenennen – ein Abbruch hinterlässt keine halbe Backup-Datei.
+  const tmp = `${target}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(data, null, 2), 'utf-8');
+  await fs.rename(tmp, target);
+  return {
+    pfad: path.relative(PROJECT_ROOT, target).split(path.sep).join('/'),
+    zeitpunkt: data.exportedAt,
+    anzahlProjekte: data.projects.length,
+    anzahlTickets: data.projects.reduce((sum, p) => sum + p.tickets.length, 0),
+  };
+}
+
+async function pruneBackups(keepN = 10) {
+  const files = await listBackupFiles();
+  const old = files.slice(0, Math.max(0, files.length - keepN));
+  for (const name of old) {
+    await fs.rm(path.join(BACKUP_DIR, name), { force: true });
+  }
+  return { geloescht: old.length };
+}
+
+async function lastBackupInfo() {
+  const files = await listBackupFiles();
+  if (files.length === 0) return null;
+  const name = files[files.length - 1];
+  const file = path.join(BACKUP_DIR, name);
+  const data = await readJson(file);
+  return {
+    zeitpunkt: data.exportedAt || null,
+    pfad: path.relative(PROJECT_ROOT, file).split(path.sep).join('/'),
+    anzahlProjekte: Array.isArray(data.projects) ? data.projects.length : 0,
+  };
+}
+
 module.exports = {
+  createBackup,
+  pruneBackups,
+  lastBackupInfo,
   listProjects,
   getProject,
   createProject,

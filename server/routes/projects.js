@@ -1,5 +1,6 @@
 const express = require('express');
 const storage = require('../lib/storage');
+const { scheduleBackup } = require('../lib/backup');
 const { generateBossMovePrompt, draftTicketFromText } = require('../lib/llm');
 
 const router = express.Router();
@@ -15,6 +16,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'name ist erforderlich' });
   }
   const project = await storage.createProject({ name, description, promptSkill });
+  scheduleBackup();
   res.status(201).json(project);
 });
 
@@ -34,6 +36,7 @@ router.post('/import', async (req, res) => {
       return res.status(400).json({ error: 'Für Anhängen/Ersetzen muss ein Zielprojekt angegeben werden.' });
     }
     const result = await storage.importProject(req.body, { mode, targetProjectId });
+    scheduleBackup();
     res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -56,6 +59,7 @@ router.get('/export-all', async (req, res) => {
 router.post('/import-all', async (req, res) => {
   try {
     const result = await storage.importAllProjects(req.body);
+    scheduleBackup();
     res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -100,6 +104,7 @@ router.put('/:projectId', async (req, res) => {
     projektReadme,
   });
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+  scheduleBackup();
   res.json(project);
 });
 
@@ -110,6 +115,7 @@ router.delete('/:projectId', async (req, res) => {
   try {
     const deleted = await storage.deleteProject(req.params.projectId);
     if (!deleted) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    scheduleBackup();
     res.status(204).end();
   } catch (err) {
     const locked = err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'ENOTEMPTY';
@@ -138,6 +144,7 @@ router.post('/:projectId/bm-prompt', async (req, res) => {
       modelId: req.body && req.body.model,
     });
     const updated = await storage.updateProject(req.params.projectId, { bmPrompt });
+    scheduleBackup();
     res.json({ bmPrompt: updated.bmPrompt, ticketCount: bmTickets.length });
   } catch (err) {
     const status = err.code === 'NO_KEY' ? 501 : err.code === 'NO_TICKETS' ? 400 : 502;

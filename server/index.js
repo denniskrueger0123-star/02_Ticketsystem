@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
+const backupRouter = require('./routes/backup');
 const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveBaseUrl, clearBaseUrl, saveCustomModel, fetchProviderModels, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
@@ -124,6 +125,7 @@ app.get('/api/version', (req, res) => {
   res.json({ version: pkg.version });
 });
 
+app.use('/api/backup', backupRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/projects/:projectId/tickets', ticketsRouter);
 
