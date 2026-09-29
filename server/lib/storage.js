@@ -153,7 +153,8 @@ async function createTicket(projectId, data) {
   const now = new Date().toISOString();
   let titel = data.titel || '';
   if (!/^#\d+\s/.test(titel)) {
-    const nummer = await nextTicketNummer(projectId);
+    // Dreistellig mit führenden Nullen (#001), passend zu den Seed-Daten.
+    const nummer = String(await nextTicketNummer(projectId)).padStart(3, '0');
     titel = titel ? `#${nummer} ${titel}` : `#${nummer}`;
   }
   const ticket = {
