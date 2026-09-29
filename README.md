@@ -231,6 +231,13 @@ In allen Modi bleibt das Prompt-Feld der Tickets erhalten; interne IDs werden
 frisch vergeben, Projekt und importierte Tickets erhalten einen
 `importedAt`-Zeitstempel.
 
+Schreibvarianten bei **Status, Kategorie und Schweregrad** werden beim Import
+automatisch auf die gültigen Werte abgebildet (z. B. `Zurueckgestellt`,
+`in-arbeit`, `BACKEND` → `Zurückgestellt`, `In Arbeit`, `Backend`) – praktisch,
+wenn eine externe KI die Datei bearbeitet hat. Wirklich unbekannte Werte (etwa
+`Done` oder `Critical`) werden durch `Offen` / `Prozess` / `Mittel` ersetzt und
+nach dem Import mit Ticket, Feld und Originalwert gemeldet.
+
 Auf der Startseite steht unter jedem Projekt eine **Zeitstempel-Zeile**
 (Erstellt, Importiert, Zuletzt exportiert). So lassen sich mehrere gleichnamige
 Projekte – etwa nach mehreren Import-Runden – zuverlässig auseinanderhalten.

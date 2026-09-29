@@ -98,13 +98,22 @@ async function onImportConfirm() {
     const result = await api.importProject(pendingImportData, { mode, targetProjectId });
     closeImportModal();
     await loadProjects();
+    let msg;
     if (mode === 'append') {
-      alert(`„${result.project.name}": ${result.ticketCount} Ticket(s) angehängt.`);
+      msg = `„${result.project.name}": ${result.ticketCount} Ticket(s) angehängt.`;
     } else if (mode === 'replace') {
-      alert(`„${result.project.name}": ${result.deletedCount} Ticket(s) gelöscht, ${result.ticketCount} importiert.`);
+      msg = `„${result.project.name}": ${result.deletedCount} Ticket(s) gelöscht, ${result.ticketCount} importiert.`;
     } else {
-      alert(`Importiert: „${result.project.name}" mit ${result.ticketCount} Ticket(s) als neues Projekt.`);
+      msg = `Importiert: „${result.project.name}" mit ${result.ticketCount} Ticket(s) als neues Projekt.`;
     }
+    const unbekannt = result.unbekannteWerte || [];
+    if (unbekannt.length > 0) {
+      const lines = [msg, `⚠ ${unbekannt.length} Wert(e) nicht zugeordnet – ersetzt:`];
+      unbekannt.slice(0, 10).forEach((u) => lines.push(`– ${u.titel}: ${u.feld} „${u.wert}“ → „${u.ersetztDurch}“`));
+      if (unbekannt.length > 10) lines.push(`… und ${unbekannt.length - 10} weitere`);
+      msg = lines.join('\n');
+    }
+    alert(msg);
   } catch (err) {
     alert('Import fehlgeschlagen: ' + err.message);
   } finally {
@@ -139,6 +148,10 @@ async function onImportAllFile() {
       lines.push(`${result.failed.length} fehlgeschlagen:`);
       result.failed.forEach((f) => lines.push(`– „${f.name}": ${f.error}`));
     }
+    result.imported.forEach((p) => {
+      const n = (p.unbekannteWerte || []).length;
+      if (n > 0) lines.push(`– „${p.name}“: ${n} Wert(e) nicht zugeordnet (ersetzt)`);
+    });
     alert(lines.join('\n'));
   } catch (err) {
     alert('Import fehlgeschlagen: ' + err.message);

@@ -1,6 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { randomUUID } = require('crypto');
+const { KATEGORIEN, SCHWEREGRADE, STATUS, matchValue } = require('./ticket-values');
 
 const DATA_DIR = path.join(__dirname, '..', '..', 'data', 'projects');
 
@@ -282,18 +283,41 @@ async function importProject(data, { mode = 'new', targetProjectId } = {}) {
   }
 
   let ticketCount = 0;
+  const unbekannteWerte = [];
   for (const t of ticketsSrc) {
     if (!t || typeof t !== 'object') continue;
     let titel = t.titel || t.title || '';
+    const titelDatei = String(titel);
     // Alte Nummer entfernen, damit createTicket fortlaufend neu nummeriert
     // (sonst gäbe es beim Anhängen doppelte Nummern).
     if (mode !== 'new') titel = String(titel).replace(/^#\d+\s+/, '');
+
+    // Schreibvarianten auf gültige Werte abbilden, Unbekanntes melden.
+    const mapValue = (feld, allowed, rawValue, fallback, meldeLeer) => {
+      const matched = matchValue(allowed, rawValue);
+      if (matched) return matched;
+      const leer = rawValue === undefined || rawValue === null || rawValue === '';
+      if (!(leer && !meldeLeer)) {
+        unbekannteWerte.push({
+          titel: titelDatei,
+          feld,
+          wert: leer ? '' : String(rawValue),
+          ersetztDurch: fallback,
+        });
+      }
+      return fallback;
+    };
+    const kategorie = mapValue('Kategorie', KATEGORIEN, t.kategorie || t.category, 'Prozess', true);
+    const schweregrad = mapValue('Schweregrad', SCHWEREGRADE, t.schweregrad || t.severity, 'Mittel', true);
+    // Fehlender Status ist normal (→ Offen) und wird nicht gemeldet.
+    const status = mapValue('Status', STATUS, t.status, 'Offen', false);
+
     await createTicket(project.id, {
       titel,
       beschreibung: t.beschreibung || t.description || '',
-      kategorie: t.kategorie || t.category || '',
-      schweregrad: t.schweregrad || t.severity || '',
-      status: t.status || 'Offen',
+      kategorie,
+      schweregrad,
+      status,
       bmStatus: t.bmStatus === true,
       claudePrompt: t.claudePrompt || t.prompt || '',
       importedAt: now,
@@ -303,7 +327,7 @@ async function importProject(data, { mode = 'new', targetProjectId } = {}) {
 
   if (mode !== 'new') project = await updateProject(project.id, { importedAt: now });
 
-  return { project, ticketCount, mode, deletedCount };
+  return { project, ticketCount, mode, deletedCount, unbekannteWerte };
 }
 
 // --- Export / Import (ALLE Projekte in einer JSON-Datei) ---
@@ -344,7 +368,11 @@ async function importAllProjects(data) {
     const name = (entry && entry.project && entry.project.name) || (entry && entry.name) || '(unbenannt)';
     try {
       const result = await importProject(entry);
-      imported.push({ name: result.project.name, ticketCount: result.ticketCount });
+      imported.push({
+        name: result.project.name,
+        ticketCount: result.ticketCount,
+        unbekannteWerte: result.unbekannteWerte,
+      });
     } catch (err) {
       failed.push({ name, error: err.message });
     }

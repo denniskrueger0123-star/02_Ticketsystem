@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const { KATEGORIEN: TICKET_KATEGORIEN, SCHWEREGRADE: TICKET_SCHWEREGRADE } = require('./ticket-values');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -699,8 +700,6 @@ async function generateBossMovePrompt({ project, tickets, modelId }) {
 }
 
 // ── Funktion 2: Ticket-Entwurf aus Freitext ─────────────────────────
-const TICKET_KATEGORIEN = ['Frontend', 'Backend', 'Infrastruktur', 'Prozess'];
-const TICKET_SCHWEREGRADE = ['Kritisch', 'Hoch', 'Mittel', 'Klein', 'Recherche'];
 
 // Extrahiert ein JSON-Objekt aus einer Modell-Antwort (entfernt evtl.
 // Code-Fences oder umgebenden Text).
