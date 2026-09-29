@@ -215,14 +215,49 @@ Prompt).
 3. Die bearbeitete Datei über **„⭱ Projekt importieren"** (Startseite, oben)
    wieder hochladen.
 
-Der Import legt daraus **immer ein neues Projekt** an – dein Original bleibt
-unangetastet, es kann also nichts verloren gehen. Danach kannst du das alte
-Projekt bei Bedarf löschen. Interne IDs und Zeitstempel werden beim Import
-frisch vergeben; als Pflichtfeld genügt der Projekt-`name`.
+Nach der Dateiauswahl fragt ein Dialog, **wie** importiert werden soll:
+
+- **Neues Projekt anlegen** (Standard): dein Original bleibt unangetastet, es
+  kann nichts verloren gehen. Pflichtfeld ist nur der Projekt-`name`.
+- **An bestehendes Projekt anhängen:** die Tickets aus der Datei kommen zu den
+  vorhandenen dazu. Ticket-Nummern werden fortlaufend neu vergeben, damit es
+  keine doppelten `#NNN` gibt.
+- **Bestehendes Projekt ersetzen:** alle Tickets des Zielprojekts werden
+  gelöscht und durch den Dateiinhalt ersetzt (Nummerierung beginnt wieder bei
+  1). Vorher erscheint eine Sicherheitsabfrage mit der Anzahl der betroffenen
+  Tickets – das ist unwiderruflich, ein Backup (siehe unten) lohnt sich.
+
+In allen Modi bleibt das Prompt-Feld der Tickets erhalten; interne IDs werden
+frisch vergeben, Projekt und importierte Tickets erhalten einen
+`importedAt`-Zeitstempel.
 
 Auf der Startseite steht unter jedem Projekt eine **Zeitstempel-Zeile**
 (Erstellt, Importiert, Zuletzt exportiert). So lassen sich mehrere gleichnamige
 Projekte – etwa nach mehreren Import-Runden – zuverlässig auseinanderhalten.
+
+## Backup aller Projekte
+
+Auf der Startseite sichert **„💾 Backup speichern"** alle Projekte samt Tickets
+in eine Datei unter `data/backups/backup-<Zeitstempel>.json` – im selben
+Format wie „Alle Projekte exportieren", also jederzeit über **„⭱ Alle Projekte
+importieren"** wiederherstellbar. Die Statuszeile daneben zeigt das letzte
+Backup. Es bleiben immer die **letzten 10 Backups** erhalten, ältere werden
+automatisch entfernt.
+
+Zusätzlich läuft nach jeder Änderung an Projekten oder Tickets automatisch ein
+Backup – gebündelt auf höchstens eines pro Minute. Schlägt das fehl (z. B.
+gesperrter Ordner), wird es nur im Server-Fenster protokolliert; die App läuft
+normal weiter.
+
+## Filter in der Projektansicht
+
+In der Filterleiste lassen sich pro Zeile (Kategorie, Schweregrad, Status, BM
+Status) **mehrere Werte gleichzeitig** wählen: Werte innerhalb einer Zeile
+gelten als ODER, die Zeilen untereinander als UND, die Titelsuche kommt
+zusätzlich dazu. **„Alle"** bzw. **„Zurücksetzen"** leert eine Zeile, **„Alle
+Filter zurücksetzen"** die ganze Leiste inkl. Suche. Übersichtstabelle und
+Detailkarten folgen immer derselben Auswahl. Die Auswahl wird pro Projekt im
+Browser gespeichert und beim nächsten Öffnen wiederhergestellt.
 
 ## Datenhaltung
 
@@ -235,7 +270,8 @@ einem Unterordner `tickets/`, in dem jedes Ticket als eigene `<id>.json` liegt.
 `id`, `titel`, `beschreibung`, `kategorie` (Frontend/Backend/Infrastruktur/
 Prozess), `schweregrad` (Kritisch/Hoch/Mittel/Klein/Recherche), `status`
 (Offen/In Arbeit/Erledigt/Zurückgestellt), `bmStatus` (Boss-Move-Markierung,
-true/false), `claudePrompt` (manuell) sowie `createdAt`/`updatedAt`.
+true/false), `claudePrompt` (manuell) sowie `createdAt`/`updatedAt` (bei importierten
+Tickets zusätzlich `importedAt`).
 
 In der Übersichtstabelle im Projekt lässt sich der **Status jedes Tickets direkt
 per Dropdown** umstellen – ohne den Bearbeiten-Dialog zu öffnen.
