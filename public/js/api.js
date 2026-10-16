@@ -110,4 +110,7 @@ const api = {
   getBackupStatus() {
     return this.request('GET', '/api/backup/status');
   },
+  runProjectBackup() {
+    return this.request('POST', '/api/backup/run');
+  },
 };

@@ -14,7 +14,7 @@ DIST_DIR="${REPO_ROOT}/dist"
 echo "Baue ${NAME}.zip ..."
 
 mkdir -p "$STAGE"
-cp -r public server scripts package.json package-lock.json README.md start.bat "$STAGE/"
+cp -r public server scripts package.json package-lock.json README.md start.bat .env.example "$STAGE/"
 
 echo "Installiere produktive Abhängigkeiten..."
 (cd "$STAGE" && npm ci --omit=dev --no-audit --no-fund --silent)

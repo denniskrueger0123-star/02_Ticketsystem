@@ -1,9 +1,11 @@
+require('./lib/config'); // lädt .env, bevor andere Module process.env lesen
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
 const backupRouter = require('./routes/backup');
+const { startScheduler } = require('./lib/project-backup');
 const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveBaseUrl, clearBaseUrl, saveCustomModel, fetchProviderModels, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
@@ -131,4 +133,5 @@ app.use('/api/projects/:projectId/tickets', ticketsRouter);
 
 app.listen(PORT, () => {
   console.log(`IT-Ideenforum läuft auf http://localhost:${PORT}`);
+  startScheduler();
 });

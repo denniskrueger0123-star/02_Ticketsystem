@@ -9,3 +9,5 @@ litellm-url.txt
 custom-models.json
 system-prompts.json
 fetched-models.json
+backups/
+.env

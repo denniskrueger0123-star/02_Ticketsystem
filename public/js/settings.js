@@ -352,3 +352,85 @@ async function loadSettings() {
 }
 
 loadSettings();
+
+// ── Automatisches Backup ────────────────────────────────────────────
+const pbDotEl = document.getElementById('pbackup-dot');
+const pbInfoEl = document.getElementById('pbackup-info');
+const pbRunBtn = document.getElementById('pbackup-run-btn');
+const pbHintEl = document.getElementById('pbackup-hint');
+
+function fmtPbDate(iso) {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '–';
+  return d.toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function addPbRow(label, value, isError) {
+  const dt = document.createElement('dt');
+  dt.textContent = label;
+  const dd = document.createElement('dd');
+  dd.textContent = value;
+  if (isError) dd.className = 'error';
+  pbInfoEl.append(dt, dd);
+}
+
+function renderPbackupStatus(pb) {
+  pbInfoEl.textContent = '';
+  if (!pb || pb.fehler) {
+    addPbRow('Status', pb ? pb.fehler : 'Keine Daten', true);
+    pbDotEl.className = 'settings-dot off';
+    return;
+  }
+  addPbRow('Letztes Backup', pb.letztesBackup ? fmtPbDate(pb.letztesBackup.zeitpunkt) : 'Noch keines');
+  addPbRow('Gesicherte Projekte', pb.letztesBackup ? String(pb.letztesBackup.anzahlProjekte) : '–');
+  if (pb.letzterFehler) {
+    addPbRow('Letzter Fehler', `${fmtPbDate(pb.letzterFehler.zeitpunkt)} – ${pb.letzterFehler.meldung}`, true);
+  } else {
+    addPbRow('Letzter Fehler', 'Keiner');
+  }
+  addPbRow('Intervall', pb.intervallMinuten === 0 ? 'Aus' : `alle ${pb.intervallMinuten} Minute(n)`);
+  addPbRow('Nächstes Backup', fmtPbDate(pb.naechstesBackup));
+  addPbRow('Aufbewahrung', `je Projekt die letzten ${pb.aufbewahren}`);
+  addPbRow('Ordner', pb.verzeichnis);
+  pbDotEl.className = `settings-dot ${pb.letztesBackup && !pb.letzterFehler ? 'on' : 'off'}`;
+}
+
+async function loadPbackupStatus() {
+  try {
+    const { projektBackups } = await api.getBackupStatus();
+    renderPbackupStatus(projektBackups);
+  } catch (err) {
+    pbHintEl.className = 'settings-hint error';
+    pbHintEl.textContent = 'Backup-Status nicht lesbar: ' + err.message;
+  }
+}
+
+if (pbRunBtn) {
+  pbRunBtn.addEventListener('click', async () => {
+    pbRunBtn.disabled = true;
+    pbHintEl.className = 'settings-hint';
+    pbHintEl.textContent = 'Sichere…';
+    try {
+      const r = await api.runProjectBackup();
+      if (r.fehler.length) {
+        pbHintEl.className = 'settings-hint error';
+        pbHintEl.textContent = `Backup mit Fehlern: ${r.fehler.map((f) => (f.projekt ? `${f.projekt}: ${f.meldung}` : f.meldung)).join('; ')}`;
+      } else {
+        pbHintEl.className = 'settings-hint ok';
+        pbHintEl.textContent = `Gesichert: ${r.anzahlProjekte} Projekt(e), ${r.anzahlTickets} Ticket(s)`
+          + (r.geloescht ? `, ${r.geloescht} alte Datei(en) gelöscht` : '') + ' ✓';
+      }
+      await loadPbackupStatus();
+    } catch (err) {
+      pbHintEl.className = 'settings-hint error';
+      pbHintEl.textContent = 'Backup fehlgeschlagen: ' + err.message;
+    } finally {
+      pbRunBtn.disabled = false;
+    }
+  });
+}
+
+loadPbackupStatus();

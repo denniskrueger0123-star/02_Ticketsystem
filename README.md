@@ -36,8 +36,11 @@ server/          Node.js/Express-Backend (REST-API)
   routes/        Projekt- und Ticket-Endpunkte
   lib/storage.js Lesen/Schreiben der JSON-Dateien
   lib/llm.js     Serverseitige LLM-Anbindung (Prompt-Generierung)
+  lib/config.js  Einstellungen aus .env/Umgebung
+  lib/project-backup.js Projekt-Backups mit Zeitsteuerung
 public/          Frontend (Vanilla HTML/CSS/JS, kein Framework)
 data/projects/   Datenhaltung – pro Projekt ein Ordner, pro Ticket eine JSON-Datei
+backups/         Automatische Projekt-Backups (nicht in Git)
 scripts/seed.js  Erzeugt die Beispieldaten
 start.bat        Ein-Klick-Start unter Windows
 ```
@@ -255,6 +258,34 @@ Zusätzlich läuft nach jeder Änderung an Projekten oder Tickets automatisch ei
 Backup – gebündelt auf höchstens eines pro Minute. Schlägt das fehl (z. B.
 gesperrter Ordner), wird es nur im Server-Fenster protokolliert; die App läuft
 normal weiter.
+
+## Automatische Projekt-Backups
+
+Zusätzlich zum Sammel-Backup sichert der Server **jedes Projekt einzeln** in
+regelmäßigen Abständen – im selben Format wie „Projekt exportieren“. Eine
+Backup-Datei lässt sich daher direkt über **„⭱ Projekt importieren“**
+wiederherstellen (Modus „Neues Projekt“, „Anhängen“ oder „Ersetzen“).
+
+- Dateiname: `<projektname>-<id-kürzel>_<Zeitstempel>.json` im Ordner `backups/`
+  (das ID-Kürzel trennt gleichnamige Projekte)
+- Läuft automatisch ab Serverstart; erstes Backup nach Ablauf des ersten Intervalls
+- Pro Projekt bleiben die letzten N Dateien erhalten; Backups gelöschter Projekte bleiben liegen
+- Unter **⚙ Einstellungen → Automatisches Backup**: Status (letztes Backup,
+  Anzahl Projekte, letzter Fehler, nächstes Backup) und Button
+  **„💾 Backup jetzt erstellen“**
+- API: `POST /api/backup/run` (manuell auslösen), `GET /api/backup/status`
+  (Feld `projektBackups`)
+- Fehler werden geloggt und im Status angezeigt, der Server läuft weiter
+
+Einstellung über Umgebungsvariablen oder eine Datei `.env` im Projektordner
+(Vorlage: `.env.example`; bereits gesetzte Umgebungsvariablen haben Vorrang).
+Gilt gleichermaßen für `start.bat`, `npm start` und Server-Betrieb:
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `BACKUP_DIR` | `backups` | Zielordner, relativ zum Projektordner oder absolut |
+| `BACKUP_INTERVAL` | `60` | Intervall in Minuten, `0` = aus (max. 35000) |
+| `BACKUP_KEEP` | `10` | Anzahl Backups pro Projekt |
 
 ## Filter in der Projektansicht
 
