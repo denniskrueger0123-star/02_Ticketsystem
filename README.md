@@ -40,7 +40,7 @@ server/          Node.js/Express-Backend (REST-API)
   lib/project-backup.js Projekt-Backups mit Zeitsteuerung
 public/          Frontend (Vanilla HTML/CSS/JS, kein Framework)
 data/projects/   Datenhaltung – pro Projekt ein Ordner, pro Ticket eine JSON-Datei
-backups/         Automatische Projekt-Backups (nicht in Git)
+backups/         Projekt-Backups (nicht in Git)
 scripts/seed.js  Erzeugt die Beispieldaten
 start.bat        Ein-Klick-Start unter Windows
 ```
@@ -245,20 +245,6 @@ Auf der Startseite steht unter jedem Projekt eine **Zeitstempel-Zeile**
 (Erstellt, Importiert, Zuletzt exportiert). So lassen sich mehrere gleichnamige
 Projekte – etwa nach mehreren Import-Runden – zuverlässig auseinanderhalten.
 
-## Backup aller Projekte
-
-Auf der Startseite sichert **„💾 Backup speichern"** alle Projekte samt Tickets
-in eine Datei unter `data/backups/backup-<Zeitstempel>.json` – im selben
-Format wie „Alle Projekte exportieren", also jederzeit über **„⭱ Alle Projekte
-importieren"** wiederherstellbar. Die Statuszeile daneben zeigt das letzte
-Backup. Es bleiben immer die **letzten 10 Backups** erhalten, ältere werden
-automatisch entfernt.
-
-Zusätzlich läuft nach jeder Änderung an Projekten oder Tickets automatisch ein
-Backup – gebündelt auf höchstens eines pro Minute. Schlägt das fehl (z. B.
-gesperrter Ordner), wird es nur im Server-Fenster protokolliert; die App läuft
-normal weiter.
-
 ## Netzwerk und Port
 
 Der Server lauscht standardmäßig **nur auf diesem Rechner** (`127.0.0.1`), weil
@@ -267,23 +253,30 @@ die App keine Anmeldung hat. Soll sie auf einem Server im Netzwerk laufen,
 setzen – dann kann jeder im Netz Projekte ändern und löschen. `start.bat`
 öffnet den Browser auf dem in `.env` eingestellten Port.
 
-## Automatische Projekt-Backups
+## Backups
 
-Zusätzlich zum Sammel-Backup sichert der Server **jedes Projekt einzeln** in
-regelmäßigen Abständen – im selben Format wie „Projekt exportieren“. Eine
-Backup-Datei lässt sich daher direkt über **„⭱ Projekt importieren“**
-wiederherstellen (Modus „Neues Projekt“, „Anhängen“ oder „Ersetzen“).
+Der Server sichert **jedes Projekt als eigene Datei** im Ordner `backups/` – im
+selben Format wie „Projekt exportieren“. Eine Backup-Datei lässt sich daher
+direkt über **„⭱ Projekt importieren“** wiederherstellen (Modus „Neues
+Projekt“, „Anhängen“ oder „Ersetzen“).
 
-- Dateiname: `<projektname>-<id-kürzel>_<Zeitstempel>.json` im Ordner `backups/`
-  (das ID-Kürzel trennt gleichnamige Projekte)
-- Läuft automatisch ab Serverstart; erstes Backup nach Ablauf des ersten Intervalls
-- Pro Projekt bleiben die letzten N Dateien erhalten; Backups gelöschter Projekte bleiben liegen
-- Unter **⚙ Einstellungen → Automatisches Backup**: Status (letztes Backup,
-  Anzahl Projekte, letzter Fehler, nächstes Backup) und Button
-  **„💾 Backup jetzt erstellen“**
+- Dateiname: `<projektname>-<id-kürzel>_<Zeitstempel>.json` (das ID-Kürzel
+  trennt gleichnamige Projekte)
+- Auslöser:
+  - nach jeder Änderung an Projekten oder Tickets, gebündelt auf höchstens
+    ein Backup pro Minute
+  - im eingestellten Intervall (`BACKUP_INTERVAL`)
+  - per Button **„💾 Backup speichern“** auf der Startseite bzw.
+    **„Backup jetzt erstellen“** in den Einstellungen
+- Aufbewahrung: Pro Projekt bleiben die letzten N Dateien erhalten; Backups
+  gelöschter Projekte bleiben liegen
+- Status unter **⚙ Einstellungen → Automatisches Backup**: letztes Backup (mit
+  Anlass), Anzahl Projekte, letzter Fehler, nächstes Backup
 - API: `POST /api/backup/run` (manuell auslösen), `GET /api/backup/status`
-  (Feld `projektBackups`)
 - Fehler werden geloggt und im Status angezeigt, der Server läuft weiter
+
+Ältere Sammel-Backups aus `data/backups/` (Versionen vor 1.4.0) lassen sich
+weiterhin über „Alle Projekte importieren“ einspielen.
 
 Einstellung über Umgebungsvariablen oder eine Datei `.env` im Projektordner
 (Vorlage: `.env.example`; bereits gesetzte Umgebungsvariablen haben Vorrang).

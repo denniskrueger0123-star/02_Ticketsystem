@@ -104,9 +104,6 @@ const api = {
     return this.request('POST', '/api/projects/import-all', data);
   },
 
-  createBackup() {
-    return this.request('POST', '/api/backup');
-  },
   getBackupStatus() {
     return this.request('GET', '/api/backup/status');
   },

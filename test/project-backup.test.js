@@ -13,7 +13,7 @@ process.env.BACKUP_KEEP = '2';
 process.env.BACKUP_INTERVAL = '0';
 
 const storage = require('../server/lib/storage');
-const { runProjectBackup, getProjectBackupStatus } = require('../server/lib/project-backup');
+const { runProjectBackup, getProjectBackupStatus, scheduleBackup } = require('../server/lib/project-backup');
 
 const pause = () => new Promise((r) => setTimeout(r, 15));
 
@@ -65,6 +65,20 @@ describe('Projekt-Backup', () => {
     const b = runProjectBackup('test');
     assert.equal(a, b);
     await a;
+  });
+
+  test('scheduleBackup bündelt mehrere Änderungen zu einem Lauf pro Projekt', async () => {
+    // Neue Dateien statt Gesamtzahl vergleichen, weil die Rotation (KEEP=2) alte Dateien löscht.
+    const vorher = new Set(fs.readdirSync(backupDir));
+    scheduleBackup();
+    scheduleBackup();
+    scheduleBackup();
+    await new Promise((r) => setTimeout(r, 300));
+    const neu = fs.readdirSync(backupDir).filter((d) => d.endsWith('.json') && !vorher.has(d));
+    assert.equal(neu.length, 2);
+    assert.equal(new Set(neu.map((d) => d.split('_')[0])).size, 2);
+    const status = await getProjectBackupStatus();
+    assert.equal(status.letztesBackup.anlass, 'Änderung');
   });
 
   // Zuletzt, weil der Import ein weiteres Projekt anlegt und die Zählung oben verfälschen würde.

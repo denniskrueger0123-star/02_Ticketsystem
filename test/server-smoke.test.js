@@ -9,7 +9,7 @@ const ROOT = path.join(__dirname, '..');
 const PORT = '3199';
 const BASE = `http://127.0.0.1:${PORT}`;
 
-// Unterordner "projects", weil das Sammel-Backup in <DATA_DIR>/../backups schreibt und sonst direkt im System-Temp landen würde.
+// Eigener Unterordner "projects", damit DATA_DIR nie direkt der System-Temp-Ordner ist.
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ideenforum-smoke-'));
 const dataDir = path.join(tmpRoot, 'projects');
 const backupDir = path.join(tmpRoot, 'projekt-backups');
@@ -79,9 +79,19 @@ describe('Server-Rauchtest', () => {
     assert.ok(Array.isArray((await res.json()).fehler));
   });
 
-  test('GET /api/backup/status liefert projektBackups', async () => {
+  test('POST /api/backup (Alias) liefert 200 mit fehler-Array', async () => {
+    const res = await fetch(`${BASE}/api/backup`, { method: 'POST' });
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray((await res.json()).fehler));
+  });
+
+  test('GET /api/backup/status liefert die Projekt-Backup-Felder direkt', async () => {
     const res = await fetch(`${BASE}/api/backup/status`);
     assert.equal(res.status, 200);
-    assert.ok('projektBackups' in (await res.json()));
+    const status = await res.json();
+    for (const feld of ['letztesBackup', 'letzterFehler', 'intervallMinuten', 'aufbewahren', 'verzeichnis']) {
+      assert.ok(feld in status, feld);
+    }
+    assert.ok(!('projektBackups' in status));
   });
 });

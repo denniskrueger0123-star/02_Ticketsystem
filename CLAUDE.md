@@ -8,7 +8,7 @@ Lokales Projekt-/Ticket-Dashboard. Node.js + Express 4, Vanilla-JS-Frontend
 
 - `npm start` → http://localhost:3000, lauscht nur auf 127.0.0.1 (`HOST`/`PORT`/`DATA_DIR`/`BACKUP_*` in `.env`, Vorlage `.env.example`). `PORT=3105 npm start` für Testserver, damit ein laufender Nutzer-Server nicht stört
 - `npm test` → automatische Tests (`node:test`, Ordner `test/`), laufen in GitHub Actions bei jedem Push und vor jedem Release. Tests nutzen eigene Temp-Ordner über `DATA_DIR`/`BACKUP_DIR` und fassen `data/` nie an
-- `npm run seed` → Demo-Projekt `metid-workflow-web-0001` mit 27 Tickets (löscht KEINE bestehenden Projekte; Testprojekte danach von Hand entfernen, `data/backups` leeren)
+- `npm run seed` → Demo-Projekt `metid-workflow-web-0001` mit 27 Tickets (löscht KEINE bestehenden Projekte; Testprojekte danach von Hand entfernen, `backups/` leeren)
 - `npm run package` → `dist/IT-Ideenforum-v<version>.zip`, lauffähiges Startpaket (ohne `zip`, z. B. Git Bash, nutzt das Skript PowerShell `Compress-Archive`)
 - UI-Änderungen immer im Browser prüfen (Playwright), nicht nur per curl. Nach Tests alles zurücksetzen.
 

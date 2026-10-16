@@ -5,7 +5,7 @@ const storage = require('./storage');
 
 const DATEI_MUSTER = /^(.+)_(\d{4}-\d{2}-\d{2}T[\d-]+Z)\.json$/;
 
-const state = { lastRunAt: null, lastProjectCount: 0, lastError: null, nextRunAt: null };
+const state = { lastRunAt: null, lastProjectCount: 0, lastError: null, nextRunAt: null, lastAnlass: null };
 let running = null; // laufendes Promise, damit sich manueller und Intervall-Lauf nicht überlappen
 let timer = null;
 
@@ -89,6 +89,7 @@ async function doRun(anlass) {
   // Ein komplett gescheiterter Lauf darf das letzte erfolgreiche Backup nicht überdecken.
   if (anzahlProjekte > 0 || fehler.length === 0) {
     state.lastRunAt = zeitpunkt;
+    state.lastAnlass = anlass;
     state.lastProjectCount = anzahlProjekte;
   }
   if (fehler.length) {
@@ -129,6 +130,27 @@ function runProjectBackup(anlass = 'manuell') {
   return running;
 }
 
+const MIN_INTERVAL_MS = 60_000;
+let changeTimer = null;
+let lastChangeRunAt = 0;
+
+// Fire-and-forget nach Create/Update/Delete: höchstens ein Lauf pro Minute, Änderungen dazwischen werden gebündelt.
+function scheduleBackup() {
+  if (changeTimer) return;
+  const wait = MIN_INTERVAL_MS - (Date.now() - lastChangeRunAt);
+  const run = () => {
+    changeTimer = null;
+    lastChangeRunAt = Date.now();
+    runProjectBackup('Änderung');
+  };
+  if (wait <= 0) {
+    run();
+    return;
+  }
+  changeTimer = setTimeout(run, wait);
+  changeTimer.unref();
+}
+
 function startScheduler() {
   if (timer) return;
   const min = config.backup.intervalMinutes;
@@ -141,6 +163,7 @@ function startScheduler() {
   state.nextRunAt = new Date(Date.now() + ms).toISOString();
   timer = setInterval(() => {
     state.nextRunAt = new Date(Date.now() + ms).toISOString();
+    lastChangeRunAt = Date.now();
     runProjectBackup('Intervall');
   }, ms);
   timer.unref();
@@ -150,7 +173,7 @@ function startScheduler() {
 async function getProjectBackupStatus() {
   let letztesBackup = null;
   if (state.lastRunAt) {
-    letztesBackup = { zeitpunkt: state.lastRunAt, anzahlProjekte: state.lastProjectCount };
+    letztesBackup = { zeitpunkt: state.lastRunAt, anzahlProjekte: state.lastProjectCount, anlass: state.lastAnlass };
   } else {
     let dateien = [];
     try {
@@ -183,4 +206,4 @@ async function getProjectBackupStatus() {
   };
 }
 
-module.exports = { runProjectBackup, startScheduler, getProjectBackupStatus };
+module.exports = { runProjectBackup, startScheduler, getProjectBackupStatus, scheduleBackup };

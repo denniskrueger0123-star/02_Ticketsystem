@@ -384,7 +384,10 @@ function renderPbackupStatus(pb) {
     pbDotEl.className = 'settings-dot off';
     return;
   }
-  addPbRow('Letztes Backup', pb.letztesBackup ? fmtPbDate(pb.letztesBackup.zeitpunkt) : 'Noch keines');
+  const anlass = pb.letztesBackup && pb.letztesBackup.anlass;
+  addPbRow('Letztes Backup', pb.letztesBackup
+    ? (anlass ? `${fmtPbDate(pb.letztesBackup.zeitpunkt)} (${anlass})` : fmtPbDate(pb.letztesBackup.zeitpunkt))
+    : 'Noch keines');
   addPbRow('Gesicherte Projekte', pb.letztesBackup ? String(pb.letztesBackup.anzahlProjekte) : '–');
   if (pb.letzterFehler) {
     addPbRow('Letzter Fehler', `${fmtPbDate(pb.letzterFehler.zeitpunkt)} – ${pb.letzterFehler.meldung}`, true);
@@ -400,8 +403,8 @@ function renderPbackupStatus(pb) {
 
 async function loadPbackupStatus() {
   try {
-    const { projektBackups } = await api.getBackupStatus();
-    renderPbackupStatus(projektBackups);
+    const pb = await api.getBackupStatus();
+    renderPbackupStatus(pb);
   } catch (err) {
     pbHintEl.className = 'settings-hint error';
     pbHintEl.textContent = 'Backup-Status nicht lesbar: ' + err.message;

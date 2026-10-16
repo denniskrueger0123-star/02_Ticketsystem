@@ -290,9 +290,15 @@ const backupStatusEl = document.getElementById('backup-status');
 
 async function loadBackupStatus() {
   try {
-    const { letztesBackup } = await api.getBackupStatus();
-    const zeit = letztesBackup && fmtDateTime(letztesBackup.zeitpunkt);
-    backupStatusEl.textContent = zeit ? `Letztes Backup: ${zeit}` : 'Noch kein Backup vorhanden.';
+    const s = await api.getBackupStatus();
+    backupStatusEl.classList.remove('error');
+    backupStatusEl.textContent = s.letztesBackup
+      ? `Letztes Backup: ${fmtDateTime(s.letztesBackup.zeitpunkt)} (${s.letztesBackup.anzahlProjekte} Projekt(e))`
+      : 'Noch kein Backup vorhanden.';
+    if (s.letzterFehler) {
+      backupStatusEl.classList.add('error');
+      backupStatusEl.textContent += ` – Fehler: ${s.letzterFehler.meldung}`;
+    }
   } catch (err) {
     backupStatusEl.textContent = '';
   }
@@ -303,13 +309,20 @@ backupBtn.addEventListener('click', async () => {
   backupStatusEl.classList.remove('error');
   backupStatusEl.textContent = 'Sichere…';
   try {
-    const r = await api.createBackup();
-    backupStatusEl.textContent =
-      `Backup gespeichert: ${r.anzahlProjekte} Projekt(e), ${r.anzahlTickets} Ticket(s) – ${fmtDateTime(r.zeitpunkt)}`;
+    const r = await api.runProjectBackup();
+    if (r.fehler.length > 0) {
+      backupStatusEl.classList.add('error');
+      backupStatusEl.textContent =
+        'Backup mit Fehlern: ' + r.fehler.map((f) => (f.projekt ? `${f.projekt}: ${f.meldung}` : f.meldung)).join('; ');
+    } else {
+      backupStatusEl.textContent =
+        `Backup gespeichert: ${r.anzahlProjekte} Projekt(e), ${r.anzahlTickets} Ticket(s) – ${fmtDateTime(r.zeitpunkt)}`;
+    }
   } catch (err) {
     backupStatusEl.classList.add('error');
     backupStatusEl.textContent = 'Backup fehlgeschlagen: ' + err.message;
   } finally {
+    // Kein loadBackupStatus() danach: Die Ergebnismeldung soll stehen bleiben, der Status kommt beim nächsten Laden.
     backupBtn.disabled = false;
   }
 });
