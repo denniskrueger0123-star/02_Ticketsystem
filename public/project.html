@@ -91,10 +91,25 @@
 
   <section class="overview">
     <h2>Übersicht</h2>
-    <p class="hint">Klick auf eine Zeile springt zur Detailkarte weiter unten. Filter oben schränken Übersicht UND Detailkarten gemeinsam ein.</p>
+    <p class="hint">Klick auf eine Zeile springt zur Detailkarte weiter unten. Filter oben schränken Übersicht UND Detailkarten gemeinsam ein. Spaltenköpfe sortieren, Kategorie/Schweregrad/Status/BM lassen sich direkt in der Zeile ändern, Titel per Doppelklick.</p>
+    <div class="ovw-tools">
+      <details class="col-menu" id="col-menu">
+        <summary>Spalten</summary>
+        <div class="col-menu-list" id="col-menu-list"></div>
+      </details>
+      <span class="ovw-sort-info" id="ovw-sort-info"></span>
+    </div>
     <div class="ovw-scroll">
       <table class="ovw">
-        <thead><tr><th>Nr.</th><th>Titel</th><th>Kategorie</th><th>Schweregrad</th><th>Status</th><th>BM</th></tr></thead>
+        <thead><tr>
+          <th data-col="nummer"><button type="button" class="th-sort" data-key="nummer">Nr.</button></th>
+          <th data-col="titel"><button type="button" class="th-sort" data-key="titel">Titel</button></th>
+          <th data-col="kategorie"><button type="button" class="th-sort" data-key="kategorie">Kategorie</button></th>
+          <th data-col="schweregrad"><button type="button" class="th-sort" data-key="schweregrad">Schweregrad</button></th>
+          <th data-col="status"><button type="button" class="th-sort" data-key="status">Status</button></th>
+          <th data-col="bm"><button type="button" class="th-sort" data-key="bm">BM</button></th>
+          <th data-col="geaendert"><button type="button" class="th-sort" data-key="geaendert">Geändert</button></th>
+        </tr></thead>
         <tbody id="ovw-body"></tbody>
       </table>
     </div>
@@ -301,6 +316,7 @@
   <script src="js/api.js"></script>
   <script src="js/version.js"></script>
   <script src="js/md.js"></script>
+  <script src="js/sort.js"></script>
   <script src="js/project.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
   "name": "it-ideenforum",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Lokales IT-Ideenforum / Projekt-Ticket-Dashboard",
   "main": "server/index.js",
   "scripts": {

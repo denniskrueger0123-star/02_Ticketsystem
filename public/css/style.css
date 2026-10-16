@@ -197,6 +197,38 @@ table.ovw tbody tr:last-child td { border-bottom: none; }
 table.ovw .num { font-weight: 800; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.ovw .titlecell { font-weight: 600; }
 
+.ovw-tools { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; }
+.col-menu { position: relative; font-size: 8.4pt; }
+.col-menu summary { cursor: pointer; list-style: none; border: 1.5px dashed var(--line); border-radius: 20px; padding: 2px 10px; font-weight: 700; color: var(--ink-soft); }
+.col-menu summary::-webkit-details-marker { display: none; }
+.col-menu[open] summary { border-color: var(--accent); color: var(--accent-2); }
+.col-menu-list { position: absolute; z-index: 20; top: 110%; left: 0; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; box-shadow: 0 4px 14px rgba(20,23,31,0.1); display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
+.col-menu-list label { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.col-menu-list label.fixed { color: var(--ink-soft); }
+.ovw-sort-info { font-size: 8pt; color: var(--ink-soft); }
+table.ovw th.col-hidden, table.ovw td.col-hidden { display: none; }
+.th-sort { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.th-sort::after { content: '↕'; opacity: 0.35; font-size: 8pt; }
+th[aria-sort="ascending"] .th-sort::after { content: '↑'; opacity: 1; }
+th[aria-sort="descending"] .th-sort::after { content: '↓'; opacity: 1; }
+.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+table.ovw .bm-cell .bm-dot { cursor: pointer; }
+table.ovw .ovw-inline { font: inherit; font-size: 8.4pt; }
+table.ovw .title-edit { width: 100%; font: inherit; font-weight: 600; padding: 2px 4px; }
+table.ovw .geaendert { white-space: nowrap; color: var(--ink-soft); font-variant-numeric: tabular-nums; font-size: 8.2pt; }
+
+/* Inline-Selects für Kategorie/Schweregrad: Farbe nur als linker Rand */
+.ovw-inline.cat, .ovw-inline.sev { max-width: 140px; padding: 2px 6px; border: 1.5px solid var(--line); border-left-width: 4px; border-radius: 5px; cursor: pointer; background: var(--card); color: var(--ink); }
+.ovw-inline.cat-Frontend      { border-left-color: var(--cat-frontend); }
+.ovw-inline.cat-Backend       { border-left-color: var(--cat-backend); }
+.ovw-inline.cat-Infrastruktur { border-left-color: var(--cat-infra); }
+.ovw-inline.cat-Prozess       { border-left-color: var(--cat-prozess); }
+.ovw-inline.sev-Kritisch      { border-left-color: var(--sev-kritisch); }
+.ovw-inline.sev-Hoch          { border-left-color: var(--sev-hoch); }
+.ovw-inline.sev-Mittel        { border-left-color: var(--sev-mittel); }
+.ovw-inline.sev-Klein         { border-left-color: var(--sev-klein); }
+.ovw-inline.sev-Recherche     { border-left-color: var(--sev-recherche); }
+
 /* Schnell-Status-Dropdown in der Übersicht */
 .ovw-status {
   width: auto; max-width: 140px; padding: 2px 6px; font-size: 8pt; font-weight: 800;

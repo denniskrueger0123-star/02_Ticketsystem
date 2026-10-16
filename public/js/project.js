@@ -68,6 +68,15 @@ const MULTI_DIMS = ['cat', 'sev', 'st', 'bm'];
 const state = { cat: [], sev: [], st: [], bm: [], search: '', detailview: 'severity' };
 let cards = []; // { ticket, cardEl, rowEl, severity }
 
+// Data-Grid-Zustand der Übersichtstabelle (Sortierung, ausgeblendete Spalten)
+const GRID_COLS = ['nummer', 'titel', 'kategorie', 'schweregrad', 'status', 'bm', 'geaendert'];
+const GRID_FIXED = ['nummer', 'titel'];
+const GRID_LABELS = {
+  nummer: 'Nr.', titel: 'Titel', kategorie: 'Kategorie', schweregrad: 'Schweregrad',
+  status: 'Status', bm: 'BM', geaendert: 'Geändert',
+};
+const grid = { sort: { key: 'nummer', dir: 'asc' }, hidden: ['geaendert'] };
+
 const searchInput = document.getElementById('search-input');
 searchInput.addEventListener('input', () => {
   state.search = searchInput.value.trim().toLowerCase();
@@ -504,6 +513,96 @@ document.getElementById('filters-reset-all').addEventListener('click', () => {
   applyFilters();
 });
 
+const gridKey = `ideenforum.grid.${projectId}`;
+function persistGrid() {
+  try {
+    localStorage.setItem(gridKey, JSON.stringify({ sort: grid.sort, hidden: grid.hidden }));
+  } catch (err) {
+    // localStorage nicht verfügbar – Einstellungen gelten dann nur für diese Sitzung
+  }
+}
+
+function restoreGrid() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(gridKey));
+  } catch (err) {
+    saved = null;
+  }
+  if (!saved || typeof saved !== 'object') return;
+  const sort = saved.sort;
+  if (sort && GRID_COLS.includes(sort.key) && (sort.dir === 'asc' || sort.dir === 'desc')) {
+    grid.sort = { key: sort.key, dir: sort.dir };
+  }
+  if (Array.isArray(saved.hidden)) {
+    grid.hidden = saved.hidden.filter((k) => GRID_COLS.includes(k) && !GRID_FIXED.includes(k));
+  }
+}
+
+function applyGridColumns() {
+  GRID_COLS.forEach((key) => {
+    const hide = grid.hidden.includes(key);
+    document.querySelectorAll(`table.ovw [data-col="${key}"]`).forEach((el) => {
+      el.classList.toggle('col-hidden', hide);
+    });
+  });
+}
+
+function syncSortUi() {
+  document.querySelectorAll('table.ovw th[data-col]').forEach((th) => {
+    if (th.dataset.col === grid.sort.key) {
+      th.setAttribute('aria-sort', grid.sort.dir === 'asc' ? 'ascending' : 'descending');
+    } else {
+      th.removeAttribute('aria-sort');
+    }
+  });
+  document.getElementById('ovw-sort-info').textContent =
+    `Sortiert nach ${GRID_LABELS[grid.sort.key]} ${grid.sort.dir === 'asc' ? '↑' : '↓'}`;
+}
+
+document.querySelectorAll('.th-sort').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    if (grid.sort.key === key) grid.sort = { key, dir: grid.sort.dir === 'asc' ? 'desc' : 'asc' };
+    else grid.sort = { key, dir: 'asc' };
+    persistGrid();
+    if (projectData) render();
+  });
+});
+
+function buildColMenu() {
+  const list = document.getElementById('col-menu-list');
+  list.textContent = '';
+  GRID_COLS.forEach((key) => {
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    const fixed = GRID_FIXED.includes(key);
+    cb.checked = fixed || !grid.hidden.includes(key);
+    if (fixed) {
+      cb.disabled = true;
+      label.className = 'fixed';
+    }
+    cb.addEventListener('change', () => {
+      grid.hidden = grid.hidden.filter((k) => k !== key);
+      if (!cb.checked) grid.hidden.push(key);
+      persistGrid();
+      applyGridColumns();
+    });
+    label.append(cb, document.createTextNode(` ${GRID_LABELS[key]}`));
+    list.appendChild(label);
+  });
+}
+
+function fmtShort(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+}
+
 function slug(s) {
   return s.replace(/\s/g, '');
 }
@@ -555,8 +654,8 @@ function render() {
 
   const rowByTicket = new Map();
 
-  // Übersichtstabelle
-  allTickets.forEach((t) => {
+  // Übersichtstabelle (Sortierung nur hier; die Detailkarten behalten ihre Reihenfolge)
+  TicketSort.sortTickets(allTickets, grid.sort).forEach((t) => {
     const { num, rest } = splitNum(t.titel);
     const tr = document.createElement('tr');
     const tdNum = document.createElement('td');
@@ -565,26 +664,52 @@ function render() {
     const tdTitle = document.createElement('td');
     tdTitle.className = 'titlecell';
     tdTitle.textContent = rest;
+    tdTitle.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      // Der erste Klick des Doppelklicks hat den Sprung zur Karte angestoßen – abbrechen,
+      // sonst scrollt die Seite weg, während man den Titel bearbeitet.
+      clearTimeout(tr._jumpTimer);
+      startTitleEdit(t, tdTitle);
+    });
     const tdCat = document.createElement('td');
-    tdCat.appendChild(makeTag(`tag-cat-${t.kategorie}`, t.kategorie));
+    tdCat.appendChild(makeInlineSelect(t, 'kategorie', KAT_OPTIONS, 'cat'));
     const tdSev = document.createElement('td');
-    tdSev.appendChild(makeTag(`tag-sev-${t.schweregrad}`, t.schweregrad));
+    tdSev.appendChild(makeInlineSelect(t, 'schweregrad', SEV_ORDER, 'sev'));
     const tdSt = document.createElement('td');
-    tdSt.appendChild(makeStatusSelect(t));
+    tdSt.appendChild(makeInlineSelect(t, 'status', STATUS_OPTIONS, 'st'));
     const tdBm = document.createElement('td');
     tdBm.className = 'bm-cell';
     const bmDot = document.createElement('span');
     bmDot.className = 'bm-dot' + (t.bmStatus ? ' on' : '');
     bmDot.title = t.bmStatus ? 'Boss Move: grün' : 'nicht markiert';
+    bmDot.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cardEl = document.getElementById(`card-${t.id}`);
+      const cardBtn = cardEl && cardEl.querySelector('.bm-toggle');
+      if (cardBtn) toggleBm(t, cardBtn);
+    });
     tdBm.appendChild(bmDot);
-    tr.append(tdNum, tdTitle, tdCat, tdSev, tdSt, tdBm);
+    const tdChg = document.createElement('td');
+    tdChg.className = 'geaendert';
+    tdChg.textContent = fmtShort(t.updatedAt);
+    const cells = { nummer: tdNum, titel: tdTitle, kategorie: tdCat, schweregrad: tdSev, status: tdSt, bm: tdBm, geaendert: tdChg };
+    GRID_COLS.forEach((key) => {
+      cells[key].dataset.col = key;
+      tr.appendChild(cells[key]);
+    });
     tr.addEventListener('click', () => {
-      const el = document.getElementById(`card-${t.id}`);
-      if (el) jumpToCard(el);
+      if (tr.querySelector('.title-edit')) return;
+      clearTimeout(tr._jumpTimer);
+      tr._jumpTimer = setTimeout(() => {
+        const el = document.getElementById(`card-${t.id}`);
+        if (el) jumpToCard(el);
+      }, 250);
     });
     ovwBody.appendChild(tr);
     rowByTicket.set(t.id, tr);
   });
+  applyGridColumns();
+  syncSortUi();
 
   // Detailkarten: entweder nach Schweregrad gruppiert, oder als eine
   // durchgehende, numerisch sortierte Liste (Umschalter "Detailansicht").
@@ -635,36 +760,90 @@ function render() {
 
 const STATUS_OPTIONS = ['Offen', 'In Arbeit', 'Erledigt', 'Zurückgestellt'];
 
-// Kompaktes Status-Dropdown für die Übersichtstabelle – Status direkt ändern.
-function makeStatusSelect(t) {
+const KAT_OPTIONS = ['Frontend', 'Backend', 'Infrastruktur', 'Prozess'];
+
+// Kompaktes Dropdown für die Übersichtstabelle – Feld direkt ändern.
+function makeInlineSelect(t, field, options, classPrefix) {
   const sel = document.createElement('select');
-  sel.className = `ovw-status st-${slug(t.status)}`;
-  STATUS_OPTIONS.forEach((s) => {
+  const cls = `${classPrefix}-${slug(t[field])}`;
+  // Status behält seine eigene Optik (.ovw-status), die anderen bekommen den neutralen Stil.
+  sel.className = field === 'status' ? `ovw-status ${cls}` : `ovw-inline ${classPrefix} ${cls}`;
+  options.forEach((v) => {
     const o = document.createElement('option');
-    o.value = s;
-    o.textContent = s;
-    if (s === t.status) o.selected = true;
+    o.value = v;
+    o.textContent = v;
+    if (v === t[field]) o.selected = true;
     sel.appendChild(o);
   });
   sel.addEventListener('click', (e) => e.stopPropagation());
   sel.addEventListener('change', async (e) => {
     e.stopPropagation();
-    const newStatus = sel.value;
-    const prev = t.status;
+    const value = sel.value;
+    const prev = t[field];
     sel.disabled = true;
     try {
-      await api.updateTicket(projectId, t.id, { status: newStatus });
-      t.status = newStatus;
+      await api.updateTicket(projectId, t.id, { [field]: value });
+      t[field] = value;
       const y = window.scrollY;
       await loadTickets();
       window.scrollTo(0, y);
     } catch (err) {
-      alert('Status konnte nicht geändert werden: ' + err.message);
+      alert(`${GRID_LABELS[field]} konnte nicht geändert werden: ${err.message}`);
       sel.value = prev;
       sel.disabled = false;
     }
   });
   return sel;
+}
+
+// Titel per Doppelklick bearbeiten; die Nummer bleibt unverändert erhalten.
+function startTitleEdit(t, td) {
+  if (td.querySelector('.title-edit')) return;
+  const { num, rest } = splitNum(t.titel);
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'title-edit';
+  input.value = rest;
+  td.textContent = '';
+  td.appendChild(input);
+  input.addEventListener('click', (e) => e.stopPropagation());
+  input.addEventListener('dblclick', (e) => e.stopPropagation());
+  input.focus();
+  input.select();
+
+  let done = false;
+  const cancel = () => {
+    if (done) return;
+    done = true;
+    td.textContent = rest;
+  };
+  const save = async () => {
+    const neu = input.value.trim();
+    if (!neu || neu === rest) {
+      cancel();
+      return;
+    }
+    done = true;
+    input.disabled = true;
+    try {
+      await api.updateTicket(projectId, t.id, { titel: num ? `${num} ${neu}` : neu });
+      const y = window.scrollY;
+      await loadTickets();
+      window.scrollTo(0, y);
+    } catch (err) {
+      alert('Titel konnte nicht geändert werden: ' + err.message);
+      td.textContent = rest;
+    }
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      save();
+    } else if (e.key === 'Escape') {
+      cancel();
+    }
+  });
+  input.addEventListener('blur', cancel);
 }
 
 function makeTag(cls, text) {
@@ -1014,6 +1193,8 @@ async function loadModels() {
   await loadProject();
   if (projectData) {
     restoreFilters();
+    restoreGrid();
+    buildColMenu();
     await loadModels();
     await loadTickets();
   }

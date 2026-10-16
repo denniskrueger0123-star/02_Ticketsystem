@@ -326,6 +326,17 @@ Filter zurücksetzen"** die ganze Leiste inkl. Suche. Übersichtstabelle und
 Detailkarten folgen immer derselben Auswahl. Die Auswahl wird pro Projekt im
 Browser gespeichert und beim nächsten Öffnen wiederhergestellt.
 
+### Übersichtstabelle
+
+Ein Klick auf einen Spaltenkopf sortiert die Tabelle (nochmal klicken kehrt die
+Richtung um). Kategorie, Schweregrad und Status folgen der fachlichen
+Reihenfolge, Tickets ohne Nummer stehen bei der Nummernsortierung am Ende. Über
+das Menü **„Spalten“** lassen sich Spalten ausblenden – Nr. und Titel bleiben
+immer sichtbar, „Geändert“ ist standardmäßig aus. Direkt in der Zeile
+bearbeiten lassen sich Kategorie, Schweregrad und Status (Dropdowns), BM (Klick
+auf den Punkt) und der Titel (Doppelklick, Enter speichert, Esc bricht ab).
+Sortierung und Spaltenauswahl werden pro Projekt im Browser gespeichert.
+
 ## Datenhaltung
 
 Es wird **keine Datenbank** verwendet – alle Daten liegen als JSON-Dateien
