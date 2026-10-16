@@ -45,6 +45,7 @@ Bevor du `start.bat` nutzen kannst, muss Node.js installiert sein. Hier zwei Weg
 Sobald Node.js installiert ist:
 - **`start.bat` doppelklicken** im IT-Ideenforum-Ordner.
 - Browser öffnet sich automatisch auf `http://localhost:3000`.
+- Anderer Port oder Zugriff aus dem Netzwerk: `PORT` bzw. `HOST` in `.env` setzen (Vorlage `.env.example`, Details im README unter „Netzwerk und Port“).
 - Fertig!
 
 ## Troubleshooting

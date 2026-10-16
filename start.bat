@@ -2,6 +2,13 @@
 chcp 65001 >nul
 title IT-Ideenforum
 cd /d "%~dp0"
+REM --- PORT aus .env uebernehmen (nur fuer die Browser-URL; der Server liest .env selbst) ---
+if exist ".env" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do (
+        if /i "%%a"=="PORT" set "PORT=%%b"
+    )
+)
+if not defined PORT set "PORT=3000"
 
 echo ============================================
 echo   IT-Ideenforum wird gestartet...
@@ -33,7 +40,7 @@ if not exist "node_modules\express" (
     )
 )
 
-echo Server startet auf http://localhost:3000
+echo Server startet auf http://localhost:%PORT%
 echo.
 echo Der Browser oeffnet sich gleich automatisch.
 echo Zum Beenden dieses Fenster schliessen.
@@ -47,7 +54,7 @@ REM     auf diesem Rechner sehen weiterhin ihren gewohnten Wert.
 set GEMINI_API_KEY=
 
 REM --- Browser nach kurzer Wartezeit oeffnen, dann Server starten ---
-start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:3000"
+start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:%PORT%"
 node server/index.js
 
 pause

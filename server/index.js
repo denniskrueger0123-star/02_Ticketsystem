@@ -1,4 +1,4 @@
-require('./lib/config'); // lädt .env, bevor andere Module process.env lesen
+const config = require('./lib/config'); // lädt .env, bevor andere Module process.env lesen
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -11,7 +11,7 @@ const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSys
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const { host: HOST, port: PORT } = config.server;
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -131,7 +131,10 @@ app.use('/api/backup', backupRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/projects/:projectId/tickets', ticketsRouter);
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`IT-Ideenforum läuft auf http://localhost:${PORT}`);
+  if (HOST !== '127.0.0.1' && HOST !== 'localhost') {
+    console.log(`[Hinweis] HOST=${HOST} – der Server ist ohne Anmeldung im Netzwerk erreichbar.`);
+  }
   startScheduler();
 });

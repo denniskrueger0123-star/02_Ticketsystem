@@ -28,4 +28,11 @@ const backup = {
   keep: intFromEnv('BACKUP_KEEP', 10, 1),
 };
 
-module.exports = { ROOT, backup };
+// Standard nur localhost: Die API hat keine Anmeldung, im Netz dürfte sonst jeder
+// Projekte löschen und API-Keys ändern. Für Server-Betrieb HOST=0.0.0.0 setzen.
+const server = {
+  host: process.env.HOST && process.env.HOST.trim() ? process.env.HOST.trim() : '127.0.0.1',
+  port: intFromEnv('PORT', 3000, 1, 65535),
+};
+
+module.exports = { ROOT, backup, server };

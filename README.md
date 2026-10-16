@@ -259,6 +259,14 @@ Backup – gebündelt auf höchstens eines pro Minute. Schlägt das fehl (z. B.
 gesperrter Ordner), wird es nur im Server-Fenster protokolliert; die App läuft
 normal weiter.
 
+## Netzwerk und Port
+
+Der Server lauscht standardmäßig **nur auf diesem Rechner** (`127.0.0.1`), weil
+die App keine Anmeldung hat. Soll sie auf einem Server im Netzwerk laufen,
+`HOST=0.0.0.0` (und bei Bedarf `PORT`) in `.env` oder als Umgebungsvariable
+setzen – dann kann jeder im Netz Projekte ändern und löschen. `start.bat`
+öffnet den Browser auf dem in `.env` eingestellten Port.
+
 ## Automatische Projekt-Backups
 
 Zusätzlich zum Sammel-Backup sichert der Server **jedes Projekt einzeln** in
