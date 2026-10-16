@@ -437,3 +437,110 @@ if (pbRunBtn) {
 }
 
 loadPbackupStatus();
+
+// ── Datenintegrität ─────────────────────────────────────────────────
+const integDotEl = document.getElementById('integ-dot');
+const integSummaryEl = document.getElementById('integ-summary');
+const integCheckBtn = document.getElementById('integ-check-btn');
+const integRepairBtn = document.getElementById('integ-repair-btn');
+const integHintEl = document.getElementById('integ-hint');
+const integTableEl = document.getElementById('integ-table');
+const integBodyEl = document.getElementById('integ-body');
+
+let letzterBefund = null;
+
+function addIntegCell(tr, text) {
+  const td = document.createElement('td');
+  td.textContent = text;
+  tr.appendChild(td);
+  return td;
+}
+
+function renderIntegrity(result) {
+  letzterBefund = result;
+  const a = result.anzahl;
+  const keine = a.fehler + a.warnungen === 0;
+  const prefix = `${result.geprueft.projekte} Projekt(e), ${result.geprueft.tickets} Ticket(s) geprüft`;
+  integSummaryEl.className = keine ? 'settings-status ok' : 'settings-status';
+  integSummaryEl.textContent = keine
+    ? `${prefix}: keine Befunde ✓`
+    : `${prefix} (${fmtPbDate(result.zeitpunkt)}): ${a.fehler} Fehler, ${a.warnungen} Warnung(en), davon ${a.reparierbar} reparierbar.`;
+  integDotEl.className = `settings-dot ${keine ? 'on' : 'off'}`;
+
+  integBodyEl.textContent = '';
+  const rang = (b) => (b.schwere === 'fehler' ? 0 : 1);
+  const sortiert = [...result.befunde].sort((x, y) => rang(x) - rang(y));
+  sortiert.forEach((b) => {
+    const tr = document.createElement('tr');
+
+    const tdSchwere = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = `integ-badge ${b.schwere}`;
+    badge.textContent = b.schwere === 'fehler' ? 'Fehler' : 'Warnung';
+    tdSchwere.appendChild(badge);
+    tr.appendChild(tdSchwere);
+
+    addIntegCell(tr, b.projekt ? b.projekt.name : '–');
+
+    const tdDatei = document.createElement('td');
+    if (b.ticket) {
+      tdDatei.appendChild(document.createTextNode(b.ticket.titel));
+      const datei = document.createElement('div');
+      datei.className = 'datei';
+      datei.textContent = b.datei;
+      tdDatei.appendChild(datei);
+    } else {
+      tdDatei.className = 'datei';
+      tdDatei.textContent = b.datei;
+    }
+    tr.appendChild(tdDatei);
+
+    addIntegCell(tr, b.meldung);
+    addIntegCell(tr, b.reparierbar ? 'ja' : 'nein');
+    integBodyEl.appendChild(tr);
+  });
+  integTableEl.classList.toggle('hidden', result.befunde.length === 0);
+  integRepairBtn.disabled = a.reparierbar === 0;
+}
+
+if (integCheckBtn) {
+  integCheckBtn.addEventListener('click', async () => {
+    integCheckBtn.disabled = true;
+    integHintEl.className = 'settings-hint';
+    integHintEl.textContent = 'Prüfe…';
+    try {
+      renderIntegrity(await api.checkIntegrity());
+      integHintEl.textContent = '';
+    } catch (err) {
+      integHintEl.className = 'settings-hint error';
+      integHintEl.textContent = 'Prüfung fehlgeschlagen: ' + err.message;
+    } finally {
+      integCheckBtn.disabled = false;
+    }
+  });
+}
+
+if (integRepairBtn) {
+  integRepairBtn.addEventListener('click', async () => {
+    if (!letzterBefund) return;
+    if (!confirm(`${letzterBefund.anzahl.reparierbar} reparierbare(r) Befund(e) werden behoben. Vorher wird ein Backup erstellt. Fortfahren?`)) return;
+    integCheckBtn.disabled = true;
+    integRepairBtn.disabled = true;
+    integHintEl.className = 'settings-hint';
+    integHintEl.textContent = 'Repariere…';
+    try {
+      const r = await api.repairIntegrity();
+      const backupFehler = r.backup.fehler && r.backup.fehler.length;
+      integHintEl.className = `settings-hint ${backupFehler ? 'error' : 'ok'}`;
+      integHintEl.textContent = `Backup: ${r.backup.anzahlProjekte} Projekt(e). Behoben: ${r.behoben.length}, übersprungen (nicht reparierbar): ${r.uebersprungen}.`
+        + (backupFehler ? ' Backup meldete Fehler – Reparatur trotzdem ausgeführt.' : '');
+      renderIntegrity(r.danach);
+    } catch (err) {
+      integHintEl.className = 'settings-hint error';
+      integHintEl.textContent = 'Reparatur fehlgeschlagen: ' + err.message;
+      integRepairBtn.disabled = !letzterBefund || letzterBefund.anzahl.reparierbar === 0;
+    } finally {
+      integCheckBtn.disabled = false;
+    }
+  });
+}

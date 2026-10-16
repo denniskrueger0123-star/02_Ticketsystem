@@ -44,12 +44,17 @@ async function listProjects() {
     if (!entry.isDirectory()) continue;
     try {
       const project = await readJson(projectFile(entry.name));
-      projects.push(project);
+      if (project && typeof project === 'object') projects.push(project);
     } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
+      if (err instanceof SyntaxError) {
+        // Eine kaputte Datei darf nicht die ganze Liste unsichtbar machen; die Integritätsprüfung meldet sie.
+        console.error(`[Storage] Überspringe unlesbare Datei ${projectFile(entry.name)}: ${err.message}`);
+      } else if (err.code !== 'ENOENT') {
+        throw err;
+      }
     }
   }
-  projects.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  projects.sort((a, b) => byCreatedAt(a, b));
   return projects;
 }
 
@@ -122,10 +127,26 @@ async function listTickets(projectId) {
   const tickets = [];
   for (const entry of entries) {
     if (!entry.endsWith('.json')) continue;
-    tickets.push(await readJson(path.join(dir, entry)));
+    const datei = path.join(dir, entry);
+    try {
+      const ticket = await readJson(datei);
+      if (ticket && typeof ticket === 'object') tickets.push(ticket);
+    } catch (err) {
+      // Eine kaputte Datei darf nicht das ganze Projekt unsichtbar machen; die Integritätsprüfung meldet sie.
+      if (err instanceof SyntaxError) {
+        console.error(`[Storage] Überspringe unlesbare Datei ${datei}: ${err.message}`);
+      } else if (err.code !== 'ENOENT') {
+        throw err;
+      }
+    }
   }
-  tickets.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  tickets.sort((a, b) => byCreatedAt(a, b));
   return tickets;
+}
+
+// Fehlendes createdAt (Integritätsbefund) darf die Liste nicht zum Absturz bringen.
+function byCreatedAt(a, b) {
+  return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
 }
 
 async function getTicket(projectId, ticketId) {

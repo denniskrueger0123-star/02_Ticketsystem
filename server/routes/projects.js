@@ -1,16 +1,17 @@
 const express = require('express');
 const storage = require('../lib/storage');
 const { scheduleBackup } = require('../lib/backup');
+const { wrap } = require('../lib/async-route');
 const { generateBossMovePrompt, draftTicketFromText } = require('../lib/llm');
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/', wrap(async (req, res) => {
   const projects = await storage.listProjects();
   res.json(projects);
-});
+}));
 
-router.post('/', async (req, res) => {
+router.post('/', wrap(async (req, res) => {
   const { name, description, promptSkill } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'name ist erforderlich' });
@@ -18,7 +19,7 @@ router.post('/', async (req, res) => {
   const project = await storage.createProject({ name, description, promptSkill });
   scheduleBackup();
   res.status(201).json(project);
-});
+}));
 
 // Import: legt aus einer hochgeladenen Export-Datei ein neues Projekt an oder
 // hängt/ersetzt Tickets in einem Zielprojekt (Query ?mode=…&targetProjectId=…,
@@ -46,7 +47,7 @@ router.post('/import', async (req, res) => {
 // Export/Import ALLER Projekte auf einmal. Müssen ebenfalls VOR
 // '/:projectId' stehen, sonst würden 'export-all'/'import-all' als
 // projectId gedeutet.
-router.get('/export-all', async (req, res) => {
+router.get('/export-all', wrap(async (req, res) => {
   const data = await storage.exportAllProjects();
   const now = new Date(data.exportedAt);
   const pad = (n) => String(n).padStart(2, '0');
@@ -54,7 +55,7 @@ router.get('/export-all', async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="alle-projekte_${stamp}.json"`);
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.send(JSON.stringify(data, null, 2));
-});
+}));
 
 router.post('/import-all', async (req, res) => {
   try {
@@ -66,14 +67,14 @@ router.post('/import-all', async (req, res) => {
   }
 });
 
-router.get('/:projectId', async (req, res) => {
+router.get('/:projectId', wrap(async (req, res) => {
   const project = await storage.getProject(req.params.projectId);
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   res.json(project);
-});
+}));
 
 // Export: ganzes Projekt inkl. aller Tickets als JSON-Datei zum Download.
-router.get('/:projectId/export', async (req, res) => {
+router.get('/:projectId/export', wrap(async (req, res) => {
   const data = await storage.exportProject(req.params.projectId);
   if (!data) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   const safeName = (data.project.name || 'projekt')
@@ -88,9 +89,9 @@ router.get('/:projectId/export', async (req, res) => {
   res.send(JSON.stringify(data, null, 2));
   // Export-Zeitpunkt vermerken (Nebeneffekt nach dem Senden).
   storage.updateProject(req.params.projectId, { lastExportedAt: new Date().toISOString() }).catch(() => {});
-});
+}));
 
-router.put('/:projectId', async (req, res) => {
+router.put('/:projectId', wrap(async (req, res) => {
   const { name, description, promptSkill, bmPromptSkill, bmPrompt, projektReadme } = req.body;
   if (name !== undefined && !name.trim()) {
     return res.status(400).json({ error: 'name darf nicht leer sein' });
@@ -106,7 +107,7 @@ router.put('/:projectId', async (req, res) => {
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   scheduleBackup();
   res.json(project);
-});
+}));
 
 router.delete('/:projectId', async (req, res) => {
   // Ohne try/catch beendet Express 4 eine fehlgeschlagene async-Route nicht,
@@ -131,7 +132,7 @@ router.delete('/:projectId', async (req, res) => {
 
 // Boss Move: aus allen grün markierten Tickets EINEN Super-Prompt generieren
 // und im Projekt (Feld bmPrompt) speichern.
-router.post('/:projectId/bm-prompt', async (req, res) => {
+router.post('/:projectId/bm-prompt', wrap(async (req, res) => {
   const project = await storage.getProject(req.params.projectId);
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   const tickets = (await storage.listTickets(req.params.projectId)) || [];
@@ -150,11 +151,11 @@ router.post('/:projectId/bm-prompt', async (req, res) => {
     const status = err.code === 'NO_KEY' ? 501 : err.code === 'NO_TICKETS' ? 400 : 502;
     res.status(status).json({ error: err.message, code: err.code || 'API_ERROR' });
   }
-});
+}));
 
 // Funktion 2: aus Freitext einen editierbaren Ticket-Entwurf erzeugen
 // (wird NICHT gespeichert – die Anlage erfolgt separat über POST /tickets).
-router.post('/:projectId/draft-ticket', async (req, res) => {
+router.post('/:projectId/draft-ticket', wrap(async (req, res) => {
   const project = await storage.getProject(req.params.projectId);
   if (!project) return res.status(404).json({ error: 'Projekt nicht gefunden' });
 
@@ -169,6 +170,6 @@ router.post('/:projectId/draft-ticket', async (req, res) => {
     const status = err.code === 'NO_KEY' ? 501 : err.code === 'NO_TEXT' ? 400 : 502;
     res.status(status).json({ error: err.message, code: err.code || 'API_ERROR' });
   }
-});
+}));
 
 module.exports = router;

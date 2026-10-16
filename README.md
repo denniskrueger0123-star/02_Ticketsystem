@@ -288,6 +288,34 @@ Gilt gleichermaßen für `start.bat`, `npm start` und Server-Betrieb:
 | `BACKUP_INTERVAL` | `60` | Intervall in Minuten, `0` = aus (max. 35000) |
 | `BACKUP_KEEP` | `10` | Anzahl Backups pro Projekt |
 
+## Datenintegrität
+
+Unter **⚙ Einstellungen → Datenintegrität** prüft der Server alle Projekt- und
+Ticket-Dateien auf Schäden – nur auf Klick, nicht automatisch beim Laden der
+Seite.
+
+- Geprüft wird:
+  - unlesbare Dateien
+  - falsche Zuordnungen (Ordnername ≠ Projekt-ID)
+  - ungültige oder abweichend geschriebene Werte (z. B. „frontend“,
+    „in arbeit“)
+  - Tickets ohne Nummer und doppelte Ticketnummern
+  - fehlende Felder und fehlende Zeitstempel
+  - `.tmp`-Reste von unterbrochenen Schreibvorgängen
+- Repariert wird, was eindeutig ist (z. B. Schreibvarianten, fehlende Nummern
+  oder Zeitstempel, `.tmp`-Reste)
+- Nur gemeldet, nie automatisch geändert: ungültige Werte, die keiner
+  Schreibvariante entsprechen, leere Titel/Kategorie/Schweregrad, verwaiste
+  Ordner und Fremddateien
+- Vor jeder Reparatur läuft ein Backup. Unlesbare Dateien werden nicht
+  gelöscht, sondern nach `data/quarantaene/<projekt-id>/` verschoben
+- Beim Serverstart wird ebenfalls geprüft; das Ergebnis steht zusammengefasst
+  im Log
+- API: `GET /api/integrity/check`, `POST /api/integrity/repair`
+- Tickets werden beim Anlegen und Ändern jetzt serverseitig validiert:
+  Schreibvarianten wie „frontend“ oder „in arbeit“ werden automatisch
+  korrigiert, Unbekanntes wird mit Fehler 400 abgelehnt
+
 ## Filter in der Projektansicht
 
 In der Filterleiste lassen sich pro Zeile (Kategorie, Schweregrad, Status, BM

@@ -110,4 +110,11 @@ const api = {
   runProjectBackup() {
     return this.request('POST', '/api/backup/run');
   },
+
+  checkIntegrity() {
+    return this.request('GET', '/api/integrity/check');
+  },
+  repairIntegrity() {
+    return this.request('POST', '/api/integrity/repair');
+  },
 };

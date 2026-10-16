@@ -334,6 +334,14 @@ footer.pagefoot { padding: 30px 24px 10px; color: var(--ink-soft); font-size: 8p
 .pbackup-info dt { color: var(--ink-soft); }
 .pbackup-info dd { margin: 0; word-break: break-all; }
 .pbackup-info dd.error { color: var(--danger); font-weight: 700; }
+.integ-table-wrap { overflow-x: auto; margin-top: 10px; }
+.integ-table { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
+.integ-table th { text-align: left; font-size: 7.4pt; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.integ-table td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.integ-table .datei { font-family: ui-monospace, Consolas, monospace; font-size: 7.8pt; color: var(--ink-soft); word-break: break-all; }
+.integ-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 7.6pt; font-weight: 800; color: #fff; }
+.integ-badge.fehler { background: var(--danger); }
+.integ-badge.warnung { background: var(--sev-mittel); }
 .settings-help { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; }
 .settings-help h2 { font-size: 11.5pt; margin: 0 0 10px; }
 .settings-help ul { margin: 0 0 12px; padding-left: 20px; font-size: 8.8pt; line-height: 1.7; }

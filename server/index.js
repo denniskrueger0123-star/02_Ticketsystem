@@ -5,6 +5,8 @@ const fs = require('fs');
 const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
 const backupRouter = require('./routes/backup');
+const integrityRouter = require('./routes/integrity');
+const { checkIntegrity } = require('./lib/integrity');
 const { startScheduler } = require('./lib/project-backup');
 const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveBaseUrl, clearBaseUrl, saveCustomModel, fetchProviderModels, DEFAULT_MODEL, LlmError } = require('./lib/llm');
 
@@ -130,6 +132,14 @@ app.get('/api/version', (req, res) => {
 app.use('/api/backup', backupRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/projects/:projectId/tickets', ticketsRouter);
+app.use('/api/integrity', integrityRouter);
+
+// Letzte Instanz: unerwartete Fehler als JSON melden statt die Anfrage hängen zu lassen.
+app.use((err, req, res, next) => {
+  console.error(`[Server] ${req.method} ${req.originalUrl}: ${err.stack || err.message}`);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Interner Fehler: ' + err.message });
+});
 
 app.listen(PORT, HOST, () => {
   console.log(`IT-Ideenforum läuft auf http://localhost:${PORT}`);
@@ -137,4 +147,7 @@ app.listen(PORT, HOST, () => {
     console.log(`[Hinweis] HOST=${HOST} – der Server ist ohne Anmeldung im Netzwerk erreichbar.`);
   }
   startScheduler();
+  checkIntegrity()
+    .then((r) => console.log(`[Integrität] ${r.geprueft.projekte} Projekt(e), ${r.geprueft.tickets} Ticket(s) geprüft – ${r.anzahl.fehler} Fehler, ${r.anzahl.warnungen} Warnung(en)`))
+    .catch((err) => console.error('[Integrität] Prüfung fehlgeschlagen:', err.message));
 });

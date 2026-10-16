@@ -94,4 +94,40 @@ describe('Server-Rauchtest', () => {
     }
     assert.ok(!('projektBackups' in status));
   });
+
+  describe('Ticket-Validierung und Integrität', () => {
+    let projectId;
+    const json = (body) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+    before(async () => {
+      const res = await fetch(`${BASE}/api/projects`, json({ name: 'Smoke-Projekt' }));
+      assert.equal(res.status, 201);
+      projectId = (await res.json()).id;
+    });
+
+    test('POST Ticket mit ungültiger Kategorie liefert 400 mit felder', async () => {
+      const res = await fetch(`${BASE}/api/projects/${projectId}/tickets`, json({ titel: 'X', kategorie: 'Foo', schweregrad: 'Hoch' }));
+      assert.equal(res.status, 400);
+      const body = await res.json();
+      assert.ok(Array.isArray(body.felder) && body.felder.length === 1);
+    });
+
+    test('POST Ticket mit Schreibvarianten liefert 201 und normalisierte Werte', async () => {
+      const res = await fetch(`${BASE}/api/projects/${projectId}/tickets`, json({ titel: 'X', kategorie: 'frontend', schweregrad: 'hoch' }));
+      assert.equal(res.status, 201);
+      assert.equal((await res.json()).kategorie, 'Frontend');
+    });
+
+    test('GET /api/integrity/check liefert 200 mit geprueft', async () => {
+      const res = await fetch(`${BASE}/api/integrity/check`);
+      assert.equal(res.status, 200);
+      assert.ok('geprueft' in (await res.json()));
+    });
+
+    test('POST /api/integrity/repair liefert 200 mit behoben-Array', async () => {
+      const res = await fetch(`${BASE}/api/integrity/repair`, { method: 'POST' });
+      assert.equal(res.status, 200);
+      assert.ok(Array.isArray((await res.json()).behoben));
+    });
+  });
 });

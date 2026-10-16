@@ -48,6 +48,32 @@
       </div>
     </div>
 
+    <h2 class="settings-section-title">Datenintegrität</h2>
+    <p class="settings-intro">
+      Prüft alle Projekt- und Ticket-Dateien auf Schäden: unlesbare Dateien,
+      falsche Zuordnungen, ungültige oder abweichend geschriebene Werte,
+      doppelte Ticketnummern, fehlende Felder. Reparierbare Befunde lassen sich
+      mit einem Klick beheben – vorher wird automatisch ein Backup erstellt.
+      Unlesbare Dateien werden nicht gelöscht, sondern nach <code>data/quarantaene/</code> verschoben.
+    </p>
+    <div class="settings-list">
+      <div class="settings-card">
+        <div class="settings-card-head"><span id="integ-dot" class="settings-dot off"></span><h3>Prüfung</h3></div>
+        <p id="integ-summary" class="settings-status muted">Noch nicht geprüft.</p>
+        <div class="settings-row">
+          <button id="integ-check-btn" class="btn-primary" type="button">🔍 Jetzt prüfen</button>
+          <button id="integ-repair-btn" class="btn-danger" type="button" disabled>🛠 Reparierbare Befunde beheben</button>
+        </div>
+        <span id="integ-hint" class="settings-hint"></span>
+        <div class="integ-table-wrap">
+          <table id="integ-table" class="integ-table hidden">
+            <thead><tr><th>Schwere</th><th>Projekt</th><th>Ticket / Datei</th><th>Meldung</th><th>Reparierbar</th></tr></thead>
+            <tbody id="integ-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <h2 class="settings-section-title">System-Anweisungen</h2>
     <p class="settings-intro">
       Diese Grund-Anweisungen steuern, wie die KI arbeitet. Du kannst sie
