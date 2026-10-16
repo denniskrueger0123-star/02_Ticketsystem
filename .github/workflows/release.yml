@@ -19,16 +19,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # alle Tags, um die höchste Version zu bestimmen
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
       - name: ZIP bauen
         run: npm run package
+
+      - name: Ist dieser Tag die höchste Version?
+        id: latest
+        run: |
+          HIGHEST=$(git tag -l 'v*' | sort -V | tail -1)
+          if [ "$GITHUB_REF_NAME" = "$HIGHEST" ]; then echo "latest=true" >> "$GITHUB_OUTPUT"; else echo "latest=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: Release veröffentlichen
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
           generate_release_notes: true
+          make_latest: ${{ steps.latest.outputs.latest }}

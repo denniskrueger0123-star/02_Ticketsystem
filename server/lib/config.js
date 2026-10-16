@@ -35,4 +35,7 @@ const server = {
   port: intFromEnv('PORT', 3000, 1, 65535),
 };
 
-module.exports = { ROOT, backup, server };
+// Überschreibbar, damit Tests nie die echten Projektdaten anfassen.
+const dataDir = path.resolve(ROOT, process.env.DATA_DIR && process.env.DATA_DIR.trim() ? process.env.DATA_DIR.trim() : path.join('data', 'projects'));
+
+module.exports = { ROOT, backup, server, dataDir };

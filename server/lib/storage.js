@@ -3,7 +3,7 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const { KATEGORIEN, SCHWEREGRADE, STATUS, matchValue } = require('./ticket-values');
 
-const DATA_DIR = path.join(__dirname, '..', '..', 'data', 'projects');
+const DATA_DIR = require('./config').dataDir;
 
 function projectDir(projectId) {
   return path.join(DATA_DIR, projectId);
