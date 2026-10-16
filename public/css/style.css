@@ -221,6 +221,15 @@ table.ovw .titlecell { font-weight: 600; }
   padding: 14px 18px; box-shadow: 0 1px 2px rgba(20,23,31,0.05);
   scroll-margin-top: 150px;
 }
+/* Kurzes Aufblinken der Zielkarte nach Klick in der Übersicht */
+.ticket-card.ticket-flash { animation: ticket-flash 1s ease-out; }
+@keyframes ticket-flash {
+  from { outline: 3px solid var(--accent); outline-offset: 2px; background: #fff6d6; }
+  to   { outline: 3px solid transparent; outline-offset: 2px; background: var(--card); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticket-card.ticket-flash { animation: none; outline: 3px solid var(--accent); outline-offset: 2px; }
+}
 .ticket-card.sev-Kritisch  { border-left-color: var(--sev-kritisch); }
 .ticket-card.sev-Hoch      { border-left-color: var(--sev-hoch); }
 .ticket-card.sev-Mittel    { border-left-color: var(--sev-mittel); }

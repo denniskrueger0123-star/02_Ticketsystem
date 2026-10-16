@@ -3,6 +3,9 @@ const projectId = params.get('id');
 if (!projectId) window.location.href = 'index.html';
 
 const SEV_ORDER = ['Kritisch', 'Hoch', 'Mittel', 'Klein', 'Recherche'];
+// Ab dieser Ticketzahl springt der Klick in der Übersicht sofort zur Karte,
+// weil Smooth-Scroll über lange Listen zu lange dauert.
+const SMOOTH_SCROLL_MAX_TICKETS = 20;
 
 const titleEl = document.getElementById('project-title');
 const subEl = document.getElementById('project-sub');
@@ -530,7 +533,7 @@ function render() {
     tr.append(tdNum, tdTitle, tdCat, tdSev, tdSt, tdBm);
     tr.addEventListener('click', () => {
       const el = document.getElementById(`card-${t.id}`);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el) jumpToCard(el);
     });
     ovwBody.appendChild(tr);
     rowByTicket.set(t.id, tr);
@@ -727,6 +730,32 @@ async function toggleBm(t, btn) {
   } finally {
     btn.disabled = false;
   }
+}
+
+// ── Sprung zur Ticketkarte ──────────────────────────────────────────
+function jumpToCard(el) {
+  // Filterleiste ist sticky und bricht je nach Breite um – Abstand daher live messen.
+  const bar = document.querySelector('.filterbar');
+  if (bar) el.style.scrollMarginTop = `${bar.offsetHeight + 12}px`;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const smooth = !reduceMotion && allTickets.length <= SMOOTH_SCROLL_MAX_TICKETS;
+  el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+  flashCard(el);
+}
+
+function flashCard(el) {
+  document.querySelectorAll('.ticket-card.ticket-flash').forEach((c) => c.classList.remove('ticket-flash'));
+  // Reflow erzwingen, damit die Animation bei erneutem Klick auf dieselbe Karte neu startet.
+  void el.offsetWidth;
+  el.classList.add('ticket-flash');
+  clearTimeout(el._flashTimer);
+  const done = () => {
+    clearTimeout(el._flashTimer);
+    el.classList.remove('ticket-flash');
+  };
+  el.addEventListener('animationend', done, { once: true });
+  // Fallback, falls keine Animation läuft (z. B. reduced-motion).
+  el._flashTimer = setTimeout(done, 1500);
 }
 
 // ── Filter ──────────────────────────────────────────────────────────
