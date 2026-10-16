@@ -375,6 +375,53 @@ function syncChipUi(dim) {
   });
 }
 
+const DIM_LABELS = { cat: 'Kategorie', sev: 'Schweregrad', st: 'Status', bm: 'BM' };
+const BM_LABELS = { yes: '🟢 Grün', no: '— Nicht' };
+
+// Entfernt einen Wert aus einem Mehrfachfilter – gleiche Wirkung wie ein Klick auf den aktiven Chip.
+function removeFilterValue(dim, val) {
+  state[dim] = state[dim].filter((v) => v !== val);
+  syncChipUi(dim);
+  persistFilters();
+  applyFilters();
+}
+
+function renderActiveFilters() {
+  const wrap = document.getElementById('active-filters');
+  const box = document.getElementById('active-chips');
+  box.textContent = '';
+  const add = (dim, val, label) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    // Gleiche Klassen wie die Filter-Chips, damit die vorhandenen Farben greifen.
+    b.className = 'chip active active-chip';
+    b.dataset.dim = dim;
+    b.dataset.val = val;
+    b.title = `${DIM_LABELS[dim] || 'Suche'}: ${label} entfernen`;
+    b.append(document.createTextNode(label));
+    const x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = '×';
+    b.appendChild(x);
+    b.addEventListener('click', () => {
+      if (dim === 'search') {
+        searchInput.value = '';
+        state.search = '';
+        persistFilters();
+        applyFilters();
+      } else {
+        removeFilterValue(dim, val);
+      }
+    });
+    box.appendChild(b);
+  };
+  MULTI_DIMS.forEach((dim) => {
+    state[dim].forEach((val) => add(dim, val, dim === 'bm' ? (BM_LABELS[val] || val) : val));
+  });
+  if (state.search) add('search', state.search, `Suche: „${searchInput.value.trim()}“`);
+  wrap.classList.toggle('hidden', box.childElementCount === 0);
+}
+
 const filterKey = `ideenforum.filters.${projectId}`;
 function persistFilters() {
   try {
@@ -760,6 +807,7 @@ function flashCard(el) {
 
 // ── Filter ──────────────────────────────────────────────────────────
 function applyFilters() {
+  renderActiveFilters();
   let visible = 0;
   const groupVisible = {};
   cards.forEach(({ ticket, cardEl, rowEl, severity }) => {
