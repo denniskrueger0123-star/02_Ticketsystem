@@ -168,6 +168,39 @@ async function nextTicketNummer(projectId) {
   return max + 1;
 }
 
+// --- Änderungsprotokoll ---
+
+const VERLAUF_MAX = 200;
+const VERLAUF_TEXT_MAX = 200;
+
+// Lange Texte gekürzt ablegen, sonst wächst die Ticket-Datei mit jedem KI-Lauf um den ganzen Prompt.
+function verlaufWert(feld, wert) {
+  if ((feld === 'beschreibung' || feld === 'claudePrompt') && typeof wert === 'string' && wert.length > VERLAUF_TEXT_MAX) {
+    return { kurz: wert.slice(0, VERLAUF_TEXT_MAX), laenge: wert.length };
+  }
+  return wert === undefined ? null : wert;
+}
+
+// Der Eintrag 'angelegt' bleibt als erster erhalten; bei Überlauf fallen die ältesten danach weg.
+function appendVerlauf(ticket, eintrag) {
+  if (!Array.isArray(ticket.verlauf)) ticket.verlauf = [];
+  ticket.verlauf.push(eintrag);
+  if (ticket.verlauf.length > VERLAUF_MAX) {
+    const behalten = ticket.verlauf[0] && ticket.verlauf[0].feld === 'angelegt' ? 1 : 0;
+    ticket.verlauf.splice(behalten, ticket.verlauf.length - VERLAUF_MAX);
+  }
+}
+
+function verlaufEintrag(ticket, feld, alt, neu, quelle) {
+  appendVerlauf(ticket, {
+    zeitpunkt: new Date().toISOString(),
+    feld,
+    alt: verlaufWert(feld, alt),
+    neu: verlaufWert(feld, neu),
+    quelle,
+  });
+}
+
 async function createTicket(projectId, data) {
   const project = await getProject(projectId);
   if (!project) return null;
@@ -192,7 +225,15 @@ async function createTicket(projectId, data) {
     importedAt: data.importedAt || null,
     createdAt: now,
     updatedAt: now,
+    verlauf: [],
   };
+  // Beim Wiederherstellen bleibt die alte Historie erhalten, der Import ist trotzdem sichtbar.
+  if (Array.isArray(data.verlauf)) {
+    for (const e of data.verlauf) {
+      if (e && typeof e === 'object' && !Array.isArray(e) && e.zeitpunkt && e.feld) ticket.verlauf.push(e);
+    }
+  }
+  verlaufEintrag(ticket, 'angelegt', null, null, data.quelle || 'manuell');
   await writeJson(ticketFile(projectId, id), ticket);
   return ticket;
 }
@@ -201,8 +242,19 @@ async function updateTicket(projectId, ticketId, data) {
   const ticket = await getTicket(projectId, ticketId);
   if (!ticket) return null;
   const fields = ['titel', 'beschreibung', 'kategorie', 'schweregrad', 'status', 'bmStatus', 'claudePrompt'];
+  const quelle = data.quelle || 'manuell';
+  if (!Array.isArray(ticket.verlauf)) ticket.verlauf = [];
   for (const field of fields) {
-    if (data[field] !== undefined) ticket[field] = data[field];
+    if (data[field] === undefined) continue;
+    const geaendert = field === 'bmStatus'
+      ? Boolean(data[field]) !== Boolean(ticket[field])
+      : data[field] !== ticket[field];
+    if (geaendert) {
+      const alt = field === 'bmStatus' ? Boolean(ticket[field]) : ticket[field];
+      const neu = field === 'bmStatus' ? Boolean(data[field]) : data[field];
+      verlaufEintrag(ticket, field, alt, neu, quelle);
+    }
+    ticket[field] = data[field];
   }
   ticket.updatedAt = new Date().toISOString();
   await writeJson(ticketFile(projectId, ticketId), ticket);
@@ -249,6 +301,7 @@ async function exportProject(projectId) {
       status: t.status || 'Offen',
       bmStatus: t.bmStatus === true,
       claudePrompt: t.claudePrompt || '',
+      verlauf: t.verlauf || [],
     })),
   };
 }
@@ -342,6 +395,8 @@ async function importProject(data, { mode = 'new', targetProjectId } = {}) {
       bmStatus: t.bmStatus === true,
       claudePrompt: t.claudePrompt || t.prompt || '',
       importedAt: now,
+      verlauf: Array.isArray(t.verlauf) ? t.verlauf : undefined,
+      quelle: 'import',
     });
     ticketCount++;
   }
@@ -412,6 +467,7 @@ module.exports = {
   createTicket,
   updateTicket,
   deleteTicket,
+  appendVerlauf,
   exportProject,
   importProject,
   exportAllProjects,

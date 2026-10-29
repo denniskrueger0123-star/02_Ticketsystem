@@ -316,6 +316,15 @@ Seite.
   Schreibvarianten wie „frontend“ oder „in arbeit“ werden automatisch
   korrigiert, Unbekanntes wird mit Fehler 400 abgelehnt
 
+## Ticket-Verlauf
+
+- Jedes Ticket protokolliert seine Änderungen: Feld, alt → neu, Zeitpunkt und
+  Quelle (manuell, Tabelle, Import, Reparatur, KI)
+- Lange Texte (Beschreibung, Prompt) werden gekürzt abgelegt, mit Längenangabe
+- Pro Ticket werden höchstens 200 Einträge gespeichert
+- Anzeige in der Detailkarte unter „Verlauf“, neueste Einträge zuerst
+- Der Verlauf wird mit exportiert und beim Import übernommen
+
 ## Filter in der Projektansicht
 
 In der Filterleiste lassen sich pro Zeile (Kategorie, Schweregrad, Status, BM

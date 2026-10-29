@@ -300,6 +300,22 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .prompt-hint.error { color: var(--danger); }
 .prompt-hint.ok { color: var(--st-done); }
 
+/* Verlauf pro Ticket */
+details.verlauf { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 6px; font-size: 8.4pt; }
+details.verlauf summary { cursor: pointer; color: var(--ink-soft); font-weight: 700; font-size: 8pt; list-style: none; }
+details.verlauf summary::-webkit-details-marker { display: none; }
+details.verlauf summary::before { content: '▸ '; }
+details.verlauf[open] summary::before { content: '▾ '; }
+.verlauf-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.verlauf-list li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.verlauf-list li.muted { color: var(--ink-soft); }
+.v-zeit { color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 7.8pt; }
+.v-quelle { font-size: 7.2pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 0 6px; border-radius: 8px; background: var(--paper); color: var(--ink-soft); border: 1px solid var(--line); }
+.v-quelle.q-ki { color: var(--accent-2); border-color: var(--accent); }
+.v-quelle.q-reparatur { color: var(--danger); border-color: var(--danger); }
+.v-quelle.q-import { color: var(--st-progress); border-color: var(--st-progress); }
+.v-text .tag { font-size: 7.4pt; padding: 0 6px; }
+
 /* ── Landing-Page (Projekte) ──────────────────────────────────────── */
 .project-list { max-width: 1080px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
 .toolbar { max-width: 1080px; margin: 0 auto; padding: 18px 24px 0; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }

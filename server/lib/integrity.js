@@ -3,6 +3,7 @@ const path = require('path');
 const config = require('./config');
 const { KATEGORIEN, SCHWEREGRADE, STATUS, matchValue } = require('./ticket-values');
 const { runProjectBackup } = require('./project-backup');
+const { appendVerlauf } = require('./storage');
 
 // --- Validierung beim Schreiben ---
 
@@ -75,6 +76,10 @@ async function readJsonFile(pfad) {
 
 async function writeJsonFile(pfad, data) {
   await fs.writeFile(pfad, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+function reparaturEintrag(d, feld, alt, neu) {
+  appendVerlauf(d, { zeitpunkt: new Date().toISOString(), feld, alt: alt === undefined ? null : alt, neu, quelle: 'reparatur' });
 }
 
 async function mutateJson(pfad, fn) {
@@ -232,6 +237,7 @@ async function scanProjekt(ordner, geprueft, add) {
   const vergebeNummer = (pfad, nummer) => mutateJson(pfad, (d) => {
     const titel = String(d.titel || '');
     d.titel = NUMMER_MUSTER.test(titel) ? titel.replace(/^#\d+\s+/, `#${nummer} `) : `#${nummer} ${titel}`;
+    reparaturEintrag(d, 'titel', titel, d.titel);
   });
 
   const vergeben = new Set();
@@ -255,10 +261,16 @@ async function scanProjekt(ordner, geprueft, add) {
       const variante = matchValue(erlaubt, wert);
       if (variante) {
         melde('warnung', 'WERT_VARIANTE', `${label} „${wert}“ ist eine Schreibvariante von „${variante}“.`,
-          () => mutateJson(pfad, (d) => { d[feld] = variante; }));
+          () => mutateJson(pfad, (d) => {
+            reparaturEintrag(d, feld, d[feld], variante);
+            d[feld] = variante;
+          }));
       } else if (istLeer(wert)) {
         if (feld === 'status') {
-          melde('fehler', 'WERT_LEER', 'Status ist leer.', () => mutateJson(pfad, (d) => { d.status = 'Offen'; }));
+          melde('fehler', 'WERT_LEER', 'Status ist leer.', () => mutateJson(pfad, (d) => {
+            reparaturEintrag(d, 'status', d.status, 'Offen');
+            d.status = 'Offen';
+          }));
         } else {
           melde('fehler', 'WERT_LEER', `${label} ist leer.`);
         }
@@ -270,7 +282,16 @@ async function scanProjekt(ordner, geprueft, add) {
     // Fehlendes bmStatus ist normal (Seed und Bestandsdaten vor dem BM-Feld) und gilt überall als false.
     if (data.bmStatus !== undefined && typeof data.bmStatus !== 'boolean') {
       melde('warnung', 'BM_KEIN_BOOLEAN', `bmStatus ist kein boolean (${JSON.stringify(data.bmStatus)}).`,
-        () => mutateJson(pfad, (d) => { d.bmStatus = d.bmStatus === true || d.bmStatus === 'true'; }));
+        () => mutateJson(pfad, (d) => {
+          const neu = d.bmStatus === true || d.bmStatus === 'true';
+          reparaturEintrag(d, 'bmStatus', d.bmStatus, neu);
+          d.bmStatus = neu;
+        }));
+    }
+
+    // Fehlendes verlauf ist normal (Bestandsdaten vor dem Änderungsprotokoll).
+    if (data.verlauf !== undefined && !Array.isArray(data.verlauf)) {
+      melde('warnung', 'VERLAUF_KAPUTT', 'verlauf ist kein Array.', () => mutateJson(pfad, (d) => { d.verlauf = []; }));
     }
 
     if (typeof data.titel !== 'string' || !data.titel.trim()) {

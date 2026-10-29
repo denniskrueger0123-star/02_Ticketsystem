@@ -41,6 +41,8 @@ raw.forEach((t, i) => {
     schweregrad: t.schweregrad,
     status: t.status,
     claudePrompt: '',
+    bmStatus: false,
+    verlauf: [{ zeitpunkt: ts, feld: 'angelegt', alt: null, neu: null, quelle: 'seed' }],
     createdAt: ts,
     updatedAt: ts,
   };

@@ -5,6 +5,9 @@ const { generatePrompt } = require('../lib/llm');
 const { wrap } = require('../lib/async-route');
 const { validateTicketInput } = require('../lib/integrity');
 
+const QUELLEN = ['manuell', 'inline', 'import', 'reparatur', 'ki', 'seed', 'unbekannt'];
+const quelleAus = (body) => (body && QUELLEN.includes(body.quelle) ? body.quelle : 'manuell');
+
 const router = express.Router({ mergeParams: true });
 
 router.get('/', wrap(async (req, res) => {
@@ -16,7 +19,7 @@ router.get('/', wrap(async (req, res) => {
 router.post('/', wrap(async (req, res) => {
   const { ok, werte, fehler } = validateTicketInput(req.body);
   if (!ok) return res.status(400).json({ error: fehler.join(' '), felder: fehler });
-  const ticket = await storage.createTicket(req.params.projectId, werte);
+  const ticket = await storage.createTicket(req.params.projectId, { ...werte, quelle: quelleAus(req.body) });
   if (!ticket) return res.status(404).json({ error: 'Projekt nicht gefunden' });
   scheduleBackup();
   res.status(201).json(ticket);
@@ -31,7 +34,7 @@ router.get('/:ticketId', wrap(async (req, res) => {
 router.put('/:ticketId', wrap(async (req, res) => {
   const { ok, werte, fehler } = validateTicketInput(req.body, { partial: true });
   if (!ok) return res.status(400).json({ error: fehler.join(' '), felder: fehler });
-  const ticket = await storage.updateTicket(req.params.projectId, req.params.ticketId, werte);
+  const ticket = await storage.updateTicket(req.params.projectId, req.params.ticketId, { ...werte, quelle: quelleAus(req.body) });
   if (!ticket) return res.status(404).json({ error: 'Ticket nicht gefunden' });
   scheduleBackup();
   res.json(ticket);
@@ -55,6 +58,7 @@ router.post('/:ticketId/generate-prompt', wrap(async (req, res) => {
     const claudePrompt = await generatePrompt({ project, ticket, modelId: req.body && req.body.model });
     const updated = await storage.updateTicket(req.params.projectId, req.params.ticketId, {
       claudePrompt,
+      quelle: 'ki',
     });
     scheduleBackup();
     res.json(updated);

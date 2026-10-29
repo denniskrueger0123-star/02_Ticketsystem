@@ -657,6 +657,10 @@ function tagRow(t) {
 // ── Rendering ───────────────────────────────────────────────────────
 function render() {
   titleEl.textContent = projectData.name;
+  // Aufgeklappter Verlauf soll den Neuaufbau überstehen (vor dem Leeren merken).
+  const offen = new Set(
+    [...document.querySelectorAll('details.verlauf[open]')].map((d) => d.closest('.ticket-card').id)
+  );
   ovwBody.innerHTML = '';
   detailWrap.innerHTML = '';
   cards = [];
@@ -728,7 +732,7 @@ function render() {
     detailWrap.appendChild(container);
 
     allTickets.forEach((t) => {
-      const cardEl = buildCard(t);
+      const cardEl = buildCard(t, offen);
       container.appendChild(cardEl);
       cards.push({ ticket: t, cardEl, rowEl: rowByTicket.get(t.id), severity: 'all', headEl: null, container });
     });
@@ -755,7 +759,7 @@ function render() {
       detailWrap.appendChild(container);
 
       group.forEach((t) => {
-        const cardEl = buildCard(t);
+        const cardEl = buildCard(t, offen);
         container.appendChild(cardEl);
         cards.push({ ticket: t, cardEl, rowEl: rowByTicket.get(t.id), severity: sev, headEl: head, container });
       });
@@ -791,7 +795,7 @@ function makeInlineSelect(t, field, options, classPrefix) {
     const prev = t[field];
     sel.disabled = true;
     try {
-      await api.updateTicket(projectId, t.id, { [field]: value });
+      await api.updateTicket(projectId, t.id, { [field]: value, quelle: 'inline' });
       t[field] = value;
       const y = window.scrollY;
       await loadTickets();
@@ -837,7 +841,7 @@ function startTitleEdit(t, td) {
     done = true;
     input.disabled = true;
     try {
-      await api.updateTicket(projectId, t.id, { titel: num ? `${num} ${neu}` : neu });
+      await api.updateTicket(projectId, t.id, { titel: num ? `${num} ${neu}` : neu, quelle: 'inline' });
       const y = window.scrollY;
       await loadTickets();
       window.scrollTo(0, y);
@@ -865,7 +869,7 @@ function makeTag(cls, text) {
   return s;
 }
 
-function buildCard(t) {
+function buildCard(t, offen) {
   const { num, rest } = splitNum(t.titel);
   const card = document.createElement('article');
   card.className = `ticket-card sev-${t.schweregrad}`;
@@ -941,15 +945,108 @@ function buildCard(t) {
   box.append(label, ta, pactions);
   card.appendChild(box);
 
+  const details = document.createElement('details');
+  details.className = 'verlauf';
+  if (offen && offen.has(card.id)) details.open = true;
+  renderVerlauf(details, t);
+  card.appendChild(details);
+
   return card;
+}
+
+const QUELLE_LABEL = {
+  manuell: 'manuell', inline: 'Tabelle', import: 'Import', reparatur: 'Reparatur', ki: 'KI', seed: 'Seed',
+};
+const BM_LABEL = { true: '🟢 grün', false: '⚪ nicht markiert' };
+
+function fmtVerlaufWert(wert) {
+  if (wert === null || wert === undefined || wert === '') return '(leer)';
+  if (typeof wert === 'boolean') return BM_LABEL[wert];
+  if (typeof wert === 'object') {
+    const kurz = wert.kurz || '';
+    return kurz ? kurz + (wert.laenge > kurz.length ? '…' : '') : '(leer)';
+  }
+  return String(wert);
+}
+
+function verlaufText(e) {
+  const text = document.createElement('span');
+  text.className = 'v-text';
+  const tagPrefix = { status: 'tag-st-', kategorie: 'tag-cat-', schweregrad: 'tag-sev-' }[e.feld];
+  if (e.feld === 'angelegt') {
+    text.textContent = 'Ticket angelegt';
+  } else if (tagPrefix) {
+    const label = { status: 'Status', kategorie: 'Kategorie', schweregrad: 'Schweregrad' }[e.feld];
+    const mk = (w) => makeTag(tagPrefix + slug(String(w ?? '')), fmtVerlaufWert(w));
+    text.append(`${label}: `, mk(e.alt), ' → ', mk(e.neu));
+  } else if (e.feld === 'bmStatus') {
+    text.textContent = `BM: ${fmtVerlaufWert(e.alt === true)} → ${fmtVerlaufWert(e.neu === true)}`;
+  } else if (e.feld === 'titel') {
+    text.textContent = `Titel: „${fmtVerlaufWert(e.alt)}“ → „${fmtVerlaufWert(e.neu)}“`;
+  } else if (e.feld === 'beschreibung' || e.feld === 'claudePrompt') {
+    const name = e.feld === 'beschreibung' ? 'Beschreibung' : 'Prompt';
+    let s = `${name} geändert`;
+    if (e.neu && typeof e.neu === 'object') {
+      s += ` (jetzt ${e.neu.laenge} Zeichen)`;
+      text.title = fmtVerlaufWert(e.neu);
+    } else if (e.alt === null || e.alt === undefined || e.alt === '') {
+      s += ' (vorher leer)';
+    }
+    text.textContent = s;
+  } else {
+    text.textContent = `${e.feld}: ${fmtVerlaufWert(e.alt)} → ${fmtVerlaufWert(e.neu)}`;
+  }
+  return text;
+}
+
+// Füllt nur den Inhalt; das open-Attribut des <details> bleibt dabei erhalten.
+function renderVerlauf(details, t) {
+  const eintraege = t.verlauf || [];
+  details.textContent = '';
+  const summary = document.createElement('summary');
+  summary.textContent = `Verlauf (${eintraege.length})`;
+  const ol = document.createElement('ol');
+  ol.className = 'verlauf-list';
+  if (eintraege.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'Noch keine Änderungen aufgezeichnet.';
+    ol.appendChild(li);
+  }
+  [...eintraege].reverse().forEach((e) => {
+    const li = document.createElement('li');
+    const zeit = document.createElement('span');
+    zeit.className = 'v-zeit';
+    const d = new Date(e.zeitpunkt);
+    zeit.textContent = Number.isNaN(d.getTime())
+      ? ''
+      : d.toLocaleString('de-DE', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+    const quelle = document.createElement('span');
+    quelle.className = `v-quelle q-${e.quelle}`;
+    quelle.textContent = QUELLE_LABEL[e.quelle] || e.quelle;
+    li.append(zeit, quelle, verlaufText(e));
+    ol.appendChild(li);
+  });
+  details.append(summary, ol);
+}
+
+function refreshVerlauf(t, updated) {
+  if (!updated || !Array.isArray(updated.verlauf)) return;
+  t.verlauf = updated.verlauf;
+  const entry = cards.find((c) => c.ticket.id === t.id);
+  const details = entry && entry.cardEl.querySelector('details.verlauf');
+  if (details) renderVerlauf(details, t);
 }
 
 async function toggleBm(t, btn) {
   const next = !t.bmStatus;
   btn.disabled = true;
   try {
-    const updated = await api.updateTicket(projectId, t.id, { bmStatus: next });
+    const updated = await api.updateTicket(projectId, t.id, { bmStatus: next, quelle: 'inline' });
     t.bmStatus = updated.bmStatus === true;
+    refreshVerlauf(t, updated);
     btn.className = 'bm-toggle' + (t.bmStatus ? ' on' : '');
     btn.textContent = t.bmStatus ? '🟢 BM' : '⚪ BM';
     // Übersichtstabellen-Punkt aktualisieren
@@ -1072,6 +1169,7 @@ async function savePrompt(t, ta, hint) {
   try {
     const updated = await api.updateTicket(projectId, t.id, { claudePrompt: ta.value });
     t.claudePrompt = updated.claudePrompt;
+    refreshVerlauf(t, updated);
     hint.className = 'prompt-hint ok';
     hint.textContent = 'Gespeichert ✓';
   } catch (err) {
@@ -1098,6 +1196,7 @@ async function generate(t, ta, hint, btn) {
   try {
     const updated = await api.generatePrompt(projectId, t.id, modelSelect.value);
     t.claudePrompt = updated.claudePrompt;
+    refreshVerlauf(t, updated);
     ta.value = updated.claudePrompt;
     hint.className = 'prompt-hint ok';
     hint.textContent = 'Generiert ✓';

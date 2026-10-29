@@ -118,6 +118,23 @@ describe('Server-Rauchtest', () => {
       assert.equal((await res.json()).kategorie, 'Frontend');
     });
 
+    test('PUT mit quelle inline wird im Verlauf protokolliert, unbekannte Quelle wird manuell', async () => {
+      const res = await fetch(`${BASE}/api/projects/${projectId}/tickets`, json({ titel: 'V', kategorie: 'Backend', schweregrad: 'Hoch' }));
+      const ticket = await res.json();
+      const put = (body) => fetch(`${BASE}/api/projects/${projectId}/tickets/${ticket.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const a = await (await put({ status: 'Erledigt', quelle: 'inline' })).json();
+      assert.equal(a.verlauf[a.verlauf.length - 1].quelle, 'inline');
+      assert.ok(!('quelle' in a));
+
+      const b = await (await put({ status: 'Offen', quelle: 'hacker' })).json();
+      assert.equal(b.verlauf[b.verlauf.length - 1].quelle, 'manuell');
+    });
+
     test('GET /api/integrity/check liefert 200 mit geprueft', async () => {
       const res = await fetch(`${BASE}/api/integrity/check`);
       assert.equal(res.status, 200);
