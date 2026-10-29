@@ -78,8 +78,10 @@ const GRID_LABELS = {
 const grid = { sort: { key: 'nummer', dir: 'asc' }, hidden: ['geaendert'] };
 
 const searchInput = document.getElementById('search-input');
+let searchWords = [];
 searchInput.addEventListener('input', () => {
   state.search = searchInput.value.trim().toLowerCase();
+  searchWords = TicketSearch.parseQuery(searchInput.value);
   persistFilters();
   applyFilters();
 });
@@ -416,6 +418,7 @@ function renderActiveFilters() {
       if (dim === 'search') {
         searchInput.value = '';
         state.search = '';
+        searchWords = TicketSearch.parseQuery(searchInput.value);
         persistFilters();
         applyFilters();
       } else {
@@ -468,6 +471,7 @@ function restoreFilters() {
   } else {
     searchInput.value = state.search;
   }
+  searchWords = TicketSearch.parseQuery(searchInput.value);
 }
 
 document.querySelectorAll('.chip').forEach((chip) => {
@@ -509,6 +513,7 @@ document.getElementById('filters-reset-all').addEventListener('click', () => {
   });
   state.search = '';
   searchInput.value = '';
+  searchWords = TicketSearch.parseQuery(searchInput.value);
   persistFilters();
   applyFilters();
 });
@@ -619,13 +624,17 @@ function ticketSortValue(t) {
   return Number.isNaN(n) ? Infinity : n;
 }
 
+function searchHit(t) {
+  return TicketSearch.matchTicket(t, searchWords);
+}
+
 function matches(t) {
   return (
     (state.cat.length === 0 || state.cat.includes(t.kategorie)) &&
     (state.sev.length === 0 || state.sev.includes(t.schweregrad)) &&
     (state.st.length === 0 || state.st.includes(t.status)) &&
     (state.bm.length === 0 || state.bm.includes(t.bmStatus === true ? 'yes' : 'no')) &&
-    (!state.search || (t.titel || '').toLowerCase().includes(state.search))
+    searchHit(t) !== null
   );
 }
 
@@ -804,6 +813,7 @@ function startTitleEdit(t, td) {
   input.type = 'text';
   input.className = 'title-edit';
   input.value = rest;
+  // Löscht auch das Such-Abzeichen; applyFilters() baut es nach Abbruch/Speichern neu.
   td.textContent = '';
   td.appendChild(input);
   input.addEventListener('click', (e) => e.stopPropagation());
@@ -816,6 +826,7 @@ function startTitleEdit(t, td) {
     if (done) return;
     done = true;
     td.textContent = rest;
+    applyFilters();
   };
   const save = async () => {
     const neu = input.value.trim();
@@ -833,6 +844,7 @@ function startTitleEdit(t, td) {
     } catch (err) {
       alert('Titel konnte nicht geändert werden: ' + err.message);
       td.textContent = rest;
+      applyFilters();
     }
   };
   input.addEventListener('keydown', (e) => {
@@ -992,7 +1004,20 @@ function applyFilters() {
   cards.forEach(({ ticket, cardEl, rowEl, severity }) => {
     const show = matches(ticket);
     cardEl.classList.toggle('hidden', !show);
-    if (rowEl) rowEl.style.display = show ? '' : 'none';
+    if (rowEl) {
+      rowEl.style.display = show ? '' : 'none';
+      const td = rowEl.querySelector('.titlecell');
+      if (td && !td.querySelector('.title-edit')) {
+        td.querySelector('.search-hit')?.remove();
+        const hit = searchHit(ticket);
+        if (hit && hit.felder.length && !hit.felder.includes('titel')) {
+          const badge = document.createElement('span');
+          badge.className = 'search-hit';
+          badge.textContent = hit.felder.map(TicketSearch.fieldLabel).join(' · ');
+          td.appendChild(badge);
+        }
+      }
+    }
     if (show) {
       visible++;
       groupVisible[severity] = true;

@@ -321,7 +321,10 @@ Seite.
 In der Filterleiste lassen sich pro Zeile (Kategorie, Schweregrad, Status, BM
 Status) **mehrere Werte gleichzeitig** wählen: Werte innerhalb einer Zeile
 gelten als ODER, die Zeilen untereinander als UND, die Titelsuche kommt
-zusätzlich dazu. **„Alle"** bzw. **„Zurücksetzen"** leert eine Zeile, **„Alle
+zusätzlich dazu. Die Suche durchsucht Titel, Beschreibung und Claude-Prompt;
+mehrere Wörter gelten als UND (alle müssen vorkommen, auch verteilt über die
+Felder), mindestens 2 Zeichen. Die Übersicht markiert Treffer, die nicht im
+Titel liegen, mit „Beschreibung“ bzw. „Prompt“. **„Alle"** bzw. **„Zurücksetzen"** leert eine Zeile, **„Alle
 Filter zurücksetzen"** die ganze Leiste inkl. Suche. Übersichtstabelle und
 Detailkarten folgen immer derselben Auswahl. Die Auswahl wird pro Projekt im
 Browser gespeichert und beim nächsten Öffnen wiederhergestellt.

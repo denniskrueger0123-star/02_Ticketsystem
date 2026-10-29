@@ -196,6 +196,7 @@ table.ovw tbody tr:hover { background: #fbfbf8; cursor: pointer; }
 table.ovw tbody tr:last-child td { border-bottom: none; }
 table.ovw .num { font-weight: 800; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.ovw .titlecell { font-weight: 600; }
+table.ovw .search-hit { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 10px; font-size: 7.2pt; font-weight: 700; color: var(--accent-2); background: #e6f6f3; border: 1px solid #bfe8df; vertical-align: middle; }
 
 .ovw-tools { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; }
 .col-menu { position: relative; font-size: 8.4pt; }
