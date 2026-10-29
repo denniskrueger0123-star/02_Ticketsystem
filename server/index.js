@@ -6,6 +6,7 @@ const projectsRouter = require('./routes/projects');
 const ticketsRouter = require('./routes/tickets');
 const backupRouter = require('./routes/backup');
 const integrityRouter = require('./routes/integrity');
+const llmRouter = require('./routes/llm');
 const { checkIntegrity } = require('./lib/integrity');
 const { startScheduler } = require('./lib/project-backup');
 const { listModels, providerStatus, settingsStatus, systemPromptsStatus, saveSystemPrompt, saveKey, clearKey, saveBaseUrl, clearBaseUrl, saveCustomModel, fetchProviderModels, DEFAULT_MODEL, LlmError } = require('./lib/llm');
@@ -133,6 +134,7 @@ app.use('/api/backup', backupRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/projects/:projectId/tickets', ticketsRouter);
 app.use('/api/integrity', integrityRouter);
+app.use('/api/llm', llmRouter);
 
 // Letzte Instanz: unerwartete Fehler als JSON melden statt die Anfrage hängen zu lassen.
 app.use((err, req, res, next) => {

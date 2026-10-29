@@ -47,6 +47,7 @@
         <span class="ai-picker">
           <label for="model-select">KI-Modell</label>
           <select id="model-select" class="model-select"></select>
+          <span id="provider-badge" class="provider-badge" title=""></span>
           <button class="btn-primary" id="new-ticket-btn">+ Neues Ticket</button>
         </span>
       </div>
@@ -310,6 +311,23 @@
           <button type="submit" class="btn-primary">Speichern</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="llm-consent-modal" class="modal-overlay hidden">
+    <div class="modal modal-narrow">
+      <h2>Daten an KI-Anbieter senden?</h2>
+      <p id="llm-consent-text"></p>
+      <ul class="consent-list">
+        <li>Projektname und Projektbeschreibung</li>
+        <li>Titel, Beschreibung, Kategorie, Schweregrad und Status des Tickets bzw. der markierten Tickets</li>
+        <li>Deine System-Anweisungen aus den Einstellungen</li>
+      </ul>
+      <p class="consent-note">Nicht gesendet werden: API-Keys, andere Projekte, der Verlauf. Jeder Aufruf wird ohne Inhalte unter ⚙ Einstellungen → KI-Aufrufe protokolliert.</p>
+      <div class="modal-actions">
+        <button type="button" id="llm-consent-cancel">Abbrechen</button>
+        <button type="button" id="llm-consent-ok" class="btn-primary">Verstanden, senden</button>
+      </div>
     </div>
   </div>
 

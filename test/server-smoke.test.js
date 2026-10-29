@@ -95,6 +95,38 @@ describe('Server-Rauchtest', () => {
     assert.ok(!('projektBackups' in status));
   });
 
+  test('GET /api/llm/log liefert eintraege-Array, DELETE leert', async () => {
+    const res = await fetch(`${BASE}/api/llm/log?limit=5`);
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray((await res.json()).eintraege));
+    const del = await fetch(`${BASE}/api/llm/log`, { method: 'DELETE' });
+    assert.equal(del.status, 200);
+    assert.equal((await del.json()).geloescht, true);
+  });
+
+  test('POST Basis-URL ohne Schema liefert 400 und legt keine Datei an', async () => {
+    const datei = path.join(ROOT, 'litellm-url.txt');
+    const vorher = fs.existsSync(datei);
+    const res = await fetch(`${BASE}/api/settings/litellm/base-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'kein-schema' }),
+    });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).code, 'BAD_URL');
+    assert.equal(fs.existsSync(datei), vorher);
+  });
+
+  test('GET /api/settings enthält keine Klartext-Keys', async () => {
+    const res = await fetch(`${BASE}/api/settings`);
+    assert.equal(res.status, 200);
+    const { providers } = await res.json();
+    for (const p of Object.values(providers)) {
+      if (p.preview.length > 8) assert.ok(p.preview.includes('•'));
+      else assert.match(p.preview, /^•*$/);
+    }
+  });
+
   describe('Ticket-Validierung und Integrität', () => {
     let projectId;
     const json = (body) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

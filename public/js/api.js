@@ -7,13 +7,17 @@ const api = {
     });
     if (!res.ok) {
       let message = `Fehler ${res.status}`;
+      let code;
       try {
         const data = await res.json();
         if (data.error) message = data.error;
+        code = data.code;
       } catch (e) {
         // ignore
       }
-      throw new Error(message);
+      const error = new Error(message);
+      if (code) error.code = code;
+      throw error;
     }
     if (res.status === 204) return null;
     return res.json();
@@ -116,5 +120,12 @@ const api = {
   },
   repairIntegrity() {
     return this.request('POST', '/api/integrity/repair');
+  },
+
+  getLlmLog(limit = 100) {
+    return this.request('GET', `/api/llm/log?limit=${encodeURIComponent(limit)}`);
+  },
+  clearLlmLog() {
+    return this.request('DELETE', '/api/llm/log');
   },
 };

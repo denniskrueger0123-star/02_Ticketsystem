@@ -220,11 +220,91 @@ function openIdeaModal() {
   ideaTextInput.focus();
 }
 
+// ── KI-Anbieter: Abzeichen, Hinweis vor dem Senden ──────────────────
+let llmInfo = { models: [], providers: {} };
+const providerBadgeEl = document.getElementById('provider-badge');
+const consentModalEl = document.getElementById('llm-consent-modal');
+const consentTextEl = document.getElementById('llm-consent-text');
+const consentOkBtn = document.getElementById('llm-consent-ok');
+const consentCancelBtn = document.getElementById('llm-consent-cancel');
+
+function shortProviderLabel(label) {
+  return label.replace(' (LiteLLM-Proxy)', '');
+}
+
+function currentProvider() {
+  const model = llmInfo.models.find((m) => m.id === modelSelect.value);
+  if (!model) return null;
+  const info = llmInfo.providers[model.provider] || {};
+  return { id: model.provider, label: shortProviderLabel(info.label || model.provider), configured: !!info.configured };
+}
+
+function updateProviderBadge() {
+  const p = currentProvider();
+  if (!p) {
+    providerBadgeEl.className = 'provider-badge';
+    providerBadgeEl.textContent = '';
+    providerBadgeEl.title = '';
+    return;
+  }
+  providerBadgeEl.className = 'provider-badge ' + (p.configured ? 'ok' : 'missing') + (p.id === 'litellm' ? ' intern' : '');
+  providerBadgeEl.textContent = p.configured ? p.label : p.label + ' – kein Key';
+  providerBadgeEl.title = p.configured ? '' : 'Unter ⚙ Einstellungen einen API-Key hinterlegen';
+}
+
+async function confirmLlmSend() {
+  const p = currentProvider();
+  const key = 'ideenforum.llmConsent.' + (p ? p.id : 'unbekannt');
+  if (localStorage.getItem(key)) return true;
+  consentTextEl.textContent = p && p.id === 'litellm'
+    ? 'Die folgenden Daten werden an euren Firmen-LLM-Proxy übertragen. Er läuft im Firmennetz, die Daten verlassen den Rechner trotzdem.'
+    : `Die folgenden Daten werden an ${p ? p.label : 'den KI-Anbieter'} übertragen und dort verarbeitet. Das ist ein externer Dienst außerhalb deines Rechners.`;
+  consentModalEl.classList.remove('hidden');
+  consentOkBtn.focus();
+  return new Promise((resolve) => {
+    const finish = (ok) => {
+      consentModalEl.classList.add('hidden');
+      consentOkBtn.removeEventListener('click', onOk);
+      consentCancelBtn.removeEventListener('click', onCancel);
+      document.removeEventListener('keydown', onKey);
+      if (ok) localStorage.setItem(key, '1');
+      resolve(ok);
+    };
+    const onOk = () => finish(true);
+    const onCancel = () => finish(false);
+    const onKey = (e) => { if (e.key === 'Escape') finish(false); };
+    consentOkBtn.addEventListener('click', onOk);
+    consentCancelBtn.addEventListener('click', onCancel);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+// Liefert null, wenn gesendet werden darf, sonst den anzuzeigenden Hinweis.
+async function llmGate() {
+  const p = currentProvider();
+  if (p && !p.configured) {
+    return { error: true, text: `Kein API-Key für ${p.label} – unter ⚙ Einstellungen hinterlegen.` };
+  }
+  if (!(await confirmLlmSend())) return { error: false, text: 'Abgebrochen.' };
+  return null;
+}
+
+function llmErrorText(err) {
+  const tipp = err.code === 'TIMEOUT' || err.code === 'UNREACHABLE' ? ' (Tipp: Basis-URL und Netz prüfen)' : '';
+  return err.message + tipp;
+}
+
 async function generateIdeaDraft() {
   const text = ideaTextInput.value.trim();
   if (!text) {
     ideaHintEl.className = 'prompt-hint error';
     ideaHintEl.textContent = 'Bitte zuerst eine Idee beschreiben.';
+    return;
+  }
+  const gate = await llmGate();
+  if (gate) {
+    ideaHintEl.className = gate.error ? 'prompt-hint error' : 'prompt-hint';
+    ideaHintEl.textContent = gate.text;
     return;
   }
   const genBtn = document.getElementById('idea-generate-btn');
@@ -243,7 +323,7 @@ async function generateIdeaDraft() {
     ideaHintEl.textContent = 'Entwurf erstellt – bei Bedarf anpassen und „Ticket erstellen“.';
   } catch (err) {
     ideaHintEl.className = 'prompt-hint error';
-    ideaHintEl.textContent = err.message;
+    ideaHintEl.textContent = llmErrorText(err);
   } finally {
     genBtn.disabled = false;
   }
@@ -328,6 +408,12 @@ async function generateBmPrompt() {
     bmHintEl.textContent = 'Keine Tickets grün markiert.';
     return;
   }
+  const gate = await llmGate();
+  if (gate) {
+    bmHintEl.className = gate.error ? 'prompt-hint error' : 'prompt-hint';
+    bmHintEl.textContent = gate.text;
+    return;
+  }
   const genBtn = document.getElementById('bm-generate-btn');
   bmHintEl.className = 'prompt-hint';
   bmHintEl.textContent = 'Generiere Super-Prompt… (kann einen Moment dauern)';
@@ -342,7 +428,7 @@ async function generateBmPrompt() {
     bmHintEl.textContent = `Aus ${result.ticketCount} Ticket(s) generiert ✓`;
   } catch (err) {
     bmHintEl.className = 'prompt-hint error';
-    bmHintEl.textContent = err.message;
+    bmHintEl.textContent = llmErrorText(err);
   } finally {
     genBtn.disabled = false;
   }
@@ -1190,6 +1276,12 @@ async function copyPrompt(ta, hint) {
 }
 
 async function generate(t, ta, hint, btn) {
+  const gate = await llmGate();
+  if (gate) {
+    hint.className = gate.error ? 'prompt-hint error' : 'prompt-hint';
+    hint.textContent = gate.text;
+    return;
+  }
   hint.className = 'prompt-hint';
   hint.textContent = 'Generiere… (kann einen Moment dauern)';
   btn.disabled = true;
@@ -1202,7 +1294,7 @@ async function generate(t, ta, hint, btn) {
     hint.textContent = 'Generiert ✓';
   } catch (err) {
     hint.className = 'prompt-hint error';
-    hint.textContent = err.message;
+    hint.textContent = llmErrorText(err);
   } finally {
     btn.disabled = false;
   }
@@ -1310,7 +1402,12 @@ async function loadModels() {
   const saved = localStorage.getItem('llmModel');
   const ids = data.models.map((m) => m.id);
   modelSelect.value = saved && ids.includes(saved) ? saved : data.default;
-  modelSelect.addEventListener('change', () => localStorage.setItem('llmModel', modelSelect.value));
+  llmInfo = { models: data.models, providers: data.providers };
+  updateProviderBadge();
+  modelSelect.addEventListener('change', () => {
+    localStorage.setItem('llmModel', modelSelect.value);
+    updateProviderBadge();
+  });
 }
 
 (async () => {

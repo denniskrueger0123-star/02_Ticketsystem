@@ -38,4 +38,12 @@ const server = {
 // Überschreibbar, damit Tests nie die echten Projektdaten anfassen.
 const dataDir = path.resolve(ROOT, process.env.DATA_DIR && process.env.DATA_DIR.trim() ? process.env.DATA_DIR.trim() : path.join('data', 'projects'));
 
-module.exports = { ROOT, backup, server, dataDir };
+// Zeitlimits für KI-Aufrufe (Sekunden in der .env, intern Millisekunden).
+// logKeep = Anzahl Einträge im Aufrufprotokoll, 0 = kein Protokoll.
+const llm = {
+  timeoutMs: intFromEnv('LLM_TIMEOUT', 60, 5, 600) * 1000,
+  fetchTimeoutMs: intFromEnv('LLM_FETCH_TIMEOUT', 20, 5, 300) * 1000,
+  logKeep: intFromEnv('LLM_LOG_KEEP', 500, 0, 100000),
+};
+
+module.exports = { ROOT, backup, server, dataDir, llm };

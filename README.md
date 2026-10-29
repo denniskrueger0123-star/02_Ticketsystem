@@ -142,6 +142,25 @@ Klick auf Generieren zeigt dann einen Hinweis, welche Datei fehlt. Alternativ
 lassen sich die Keys über die Umgebungsvariablen `ANTHROPIC_API_KEY`,
 `GEMINI_API_KEY`, `OPENAI_API_KEY` setzen; das Standardmodell über `LLM_MODEL`.
 
+### Anbieter-Abzeichen, Hinweis vor dem Senden und Aufrufprotokoll
+
+Neben dem „KI-Modell"-Dropdown zeigt ein **Abzeichen** den Anbieter des
+gewählten Modells (grün = Key hinterlegt, rot = „kein Key"; das Firmen-LLM ist
+zusätzlich hellblau als Firmennetz markiert). Ohne Key wird gar nicht erst
+gesendet, sondern auf die Einstellungen verwiesen.
+
+Vor dem **ersten Senden an einen Anbieter** (einmal pro Anbieter und Browser)
+erscheint ein Hinweis, welche Daten übertragen werden (Projektname und
+-beschreibung, Ticketdaten, deine System-Anweisungen) und welche nicht
+(API-Keys, andere Projekte, Verlauf).
+
+Jeder KI-Aufruf wird **ohne Inhalte** protokolliert (Zeitpunkt, Anbieter,
+Modell, Zweck, Dauer, Ergebnis) und ist unter **Einstellungen → KI-Aufrufe**
+einsehbar und leerbar. Die Datei liegt unter `data/llm-log.jsonl`. Über
+Umgebungsvariablen lässt sich das anpassen: `LLM_TIMEOUT`, `LLM_FETCH_TIMEOUT`
+(Zeitüberschreitungen) und `LLM_LOG_KEEP` (Anzahl aufbewahrter Einträge). Bei
+einer Zeitüberschreitung (Standard 60 s) erscheint eine klare Meldung.
+
 ### Eigene KI-Anweisungen pro Projekt
 
 Im Projekt oben auf **„✏ KI-Anweisungen"** klicken, um projektweite

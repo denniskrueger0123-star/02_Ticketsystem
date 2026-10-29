@@ -544,3 +544,78 @@ if (integRepairBtn) {
     }
   });
 }
+
+// ── KI-Aufrufe ──────────────────────────────────────────────────────
+const llmlogSummaryEl = document.getElementById('llmlog-summary');
+const llmlogReloadBtn = document.getElementById('llmlog-reload-btn');
+const llmlogClearBtn = document.getElementById('llmlog-clear-btn');
+const llmlogHintEl = document.getElementById('llmlog-hint');
+const llmlogTableEl = document.getElementById('llmlog-table');
+const llmlogBodyEl = document.getElementById('llmlog-body');
+
+const LLM_ZWECK = {
+  prompt: 'Ticket-Prompt',
+  entwurf: 'Ticket-Entwurf',
+  bossmove: 'Boss Move',
+  modelle: 'Modell-Liste',
+};
+
+function renderLlmLog(result) {
+  const eintraege = result.eintraege || [];
+  const fehler = eintraege.filter((e) => !e.ok).length;
+  llmlogSummaryEl.textContent = eintraege.length === 0
+    ? 'Noch keine Aufrufe'
+    : `${eintraege.length} Einträge, davon ${fehler} Fehler`;
+
+  llmlogBodyEl.textContent = '';
+  eintraege.forEach((e) => {
+    const tr = document.createElement('tr');
+    addIntegCell(tr, fmtPbDate(e.zeitpunkt));
+    addIntegCell(tr, e.anbieterLabel || e.anbieter || '–');
+    addIntegCell(tr, e.modell || '–');
+    addIntegCell(tr, LLM_ZWECK[e.zweck] || e.zweck || '–');
+    addIntegCell(tr, `${((e.dauerMs || 0) / 1000).toFixed(1)} s`);
+
+    const td = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = e.ok ? 'integ-badge ok' : 'integ-badge fehler';
+    badge.textContent = e.ok ? 'ok' : (e.fehlerCode || 'Fehler');
+    if (!e.ok && e.fehlerText) badge.title = e.fehlerText;
+    td.appendChild(badge);
+    tr.appendChild(td);
+    llmlogBodyEl.appendChild(tr);
+  });
+  llmlogTableEl.classList.toggle('hidden', eintraege.length === 0);
+}
+
+async function loadLlmLog() {
+  llmlogHintEl.className = 'settings-hint';
+  llmlogHintEl.textContent = '';
+  try {
+    renderLlmLog(await api.getLlmLog(100));
+  } catch (err) {
+    llmlogHintEl.className = 'settings-hint error';
+    llmlogHintEl.textContent = 'Protokoll konnte nicht geladen werden: ' + err.message;
+  }
+}
+
+if (llmlogReloadBtn) {
+  llmlogReloadBtn.addEventListener('click', loadLlmLog);
+}
+
+if (llmlogClearBtn) {
+  llmlogClearBtn.addEventListener('click', async () => {
+    if (!confirm('Protokoll unwiderruflich leeren?')) return;
+    try {
+      await api.clearLlmLog();
+      await loadLlmLog();
+      llmlogHintEl.className = 'settings-hint ok';
+      llmlogHintEl.textContent = 'Protokoll geleert.';
+    } catch (err) {
+      llmlogHintEl.className = 'settings-hint error';
+      llmlogHintEl.textContent = 'Leeren fehlgeschlagen: ' + err.message;
+    }
+  });
+}
+
+loadLlmLog();

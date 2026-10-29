@@ -5,6 +5,8 @@
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const config = require('./config');
+const llmLog = require('./llm-log');
 const { KATEGORIEN: TICKET_KATEGORIEN, SCHWEREGRADE: TICKET_SCHWEREGRADE } = require('./ticket-values');
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -235,6 +237,71 @@ class LlmError extends Error {
   }
 }
 
+// ── Zentrale Fehlerübersetzung ──────────────────────────────────────
+// Rohe Netzfehler werden nie durchgereicht (sie könnten URLs mit Key enthalten,
+// z. B. beim Gemini-Aufruf); nur eigene Texte bzw. die API-Meldung.
+const NETZ_CODES = /^(ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ECONNRESET|ETIMEDOUT|ERR_TLS_CERT|CERT_|DEPTH_ZERO|UNABLE_TO_|SELF_SIGNED)/;
+
+function hostVon(url) {
+  try {
+    return new URL(url).host;
+  } catch (e) {
+    return 'Server';
+  }
+}
+
+// baseUrl nur beim LiteLLM-Proxy gesetzt (dort ist ein 404 meist eine falsche Basis-URL).
+function httpFehler(status, label, data, { baseUrl } = {}) {
+  if (status === 401 || status === 403) {
+    return new LlmError(`API-Key für ${label} ungültig oder abgelaufen.`, 'AUTH');
+  }
+  if (status === 404) {
+    const zusatz = baseUrl ? ' Prüfe Modell-ID und Basis-URL.' : '';
+    return new LlmError(`Modell oder Endpunkt bei ${label} unbekannt (404).${zusatz}`, 'NOT_FOUND');
+  }
+  if (status === 429) {
+    return new LlmError(`Limit bei ${label} erreicht – später erneut versuchen.`, 'RATE_LIMIT');
+  }
+  if (status >= 500) {
+    return new LlmError(`${label} meldet Serverfehler (${status}).`, 'UPSTREAM');
+  }
+  const text = (data && data.error && data.error.message) || (data && data.statusText) || `HTTP ${status}`;
+  return new LlmError(`${label}: ${text}`, 'API_ERROR');
+}
+
+function uebersetzeFehler(err, label, { baseUrl, ziel, timeoutMs } = {}) {
+  if (err instanceof LlmError) return err;
+  const name = (err && (err.name || (err.constructor && err.constructor.name))) || '';
+  if (name === 'TimeoutError' || name === 'AbortError' || name === 'APIConnectionTimeoutError') {
+    const sek = Math.round((timeoutMs || config.llm.timeoutMs) / 1000);
+    return new LlmError(`Zeitüberschreitung nach ${sek} s bei ${label} – Server erreichbar?`, 'TIMEOUT');
+  }
+  const code = (err && ((err.cause && err.cause.code) || err.code)) || '';
+  if (NETZ_CODES.test(String(code)) || name === 'APIConnectionError') {
+    const wo = ziel || baseUrl;
+    return new LlmError(`${label} nicht erreichbar${wo ? ` (${wo})` : ''}: ${code || 'Verbindungsfehler'}`, 'UNREACHABLE');
+  }
+  if (err && typeof err.status === 'number') {
+    return httpFehler(err.status, label, { error: { message: err.message } }, { baseUrl });
+  }
+  return new LlmError(`${label}: ${err && err.message ? err.message : 'Unbekannter Fehler'}`, 'API_ERROR');
+}
+
+// fetch mit Zeitlimit; übersetzt Netz- und HTTP-Fehler in LlmError.
+async function fetchJson(url, options, label, { baseUrl, timeoutMs }) {
+  let res;
+  try {
+    res = await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (err) {
+    throw uebersetzeFehler(err, label, { baseUrl, ziel: baseUrl || hostVon(url), timeoutMs });
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw httpFehler(res.status, label, { error: data && data.error, statusText: res.statusText }, { baseUrl });
+  }
+  return data;
+}
+
 function resolveKey(provider) {
   const cfg = PROVIDERS[provider];
   if (process.env[cfg.keyEnv] && process.env[cfg.keyEnv].trim()) {
@@ -299,7 +366,7 @@ function settingsStatus() {
       baseUrl = {
         configured: !!urlSource,
         source: urlSource,
-        value: normalizeBaseUrl(envUrl || fileUrl || ''),
+        value: sichereBasisUrl(envUrl || fileUrl || ''),
         urlEnv: cfg.baseUrlEnv,
       };
     }
@@ -339,7 +406,23 @@ function clearKey(provider) {
 
 // ── Basis-URL: nur für Anbieter mit eigenem Server (z. B. litellm) ──
 function normalizeBaseUrl(url) {
-  return (url || '').trim().replace(/\/+$/, '');
+  let u = (url || '').trim().replace(/\/+$/, '');
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) {
+    throw new LlmError('Basis-URL muss mit http:// oder https:// beginnen.', 'BAD_URL');
+  }
+  // Die Aufrufe hängen selbst /v1/… an; ein mitgegebenes /v1 ergäbe /v1/v1/….
+  u = u.replace(/\/v1$/i, '').replace(/\/+$/, '');
+  return u;
+}
+
+// Die Einstellungsseite muss auch bei ungültig gespeicherter URL anzeigbar bleiben.
+function sichereBasisUrl(url) {
+  try {
+    return normalizeBaseUrl(url);
+  } catch (e) {
+    return (url || '').trim();
+  }
 }
 
 function readBaseUrlFile(provider) {
@@ -367,9 +450,6 @@ function saveBaseUrl(provider, url) {
   if (!cfg || !cfg.baseUrlFile) throw new LlmError('Dieser Anbieter benötigt keine Basis-URL.', 'BAD_PROVIDER');
   const trimmed = normalizeBaseUrl(url);
   if (!trimmed) throw new LlmError('Keine Basis-URL übergeben.', 'BAD_URL');
-  if (!/^https?:\/\//i.test(trimmed)) {
-    throw new LlmError('Basis-URL muss mit http:// oder https:// beginnen.', 'BAD_URL');
-  }
   fs.writeFileSync(path.join(ROOT, cfg.baseUrlFile), trimmed + '\n', 'utf-8');
 }
 
@@ -415,7 +495,7 @@ function buildBossMoveContent(project, tickets) {
 
 // ── Anbieter-spezifische Aufrufe ────────────────────────────────────
 async function callAnthropic(model, key, system, user) {
-  const client = new Anthropic({ apiKey: key });
+  const client = new Anthropic({ apiKey: key, timeout: config.llm.timeoutMs, maxRetries: 1 });
   const req = {
     model: model.id,
     max_tokens: 2048,
@@ -423,7 +503,12 @@ async function callAnthropic(model, key, system, user) {
     messages: [{ role: 'user', content: user }],
   };
   if (model.effort) req.output_config = { effort: model.effort };
-  const res = await client.messages.create(req);
+  let res;
+  try {
+    res = await client.messages.create(req);
+  } catch (err) {
+    throw uebersetzeFehler(err, PROVIDERS.anthropic.label, { ziel: 'api.anthropic.com', timeoutMs: config.llm.timeoutMs });
+  }
   if (res.stop_reason === 'refusal') {
     throw new LlmError('Die Anfrage wurde vom Modell abgelehnt.', 'REFUSAL');
   }
@@ -436,40 +521,42 @@ async function callAnthropic(model, key, system, user) {
 async function callGemini(model, key, system, user) {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${encodeURIComponent(key)}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { maxOutputTokens: 2048 },
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new LlmError(`Gemini-Fehler: ${data.error?.message || res.statusText}`, 'API_ERROR');
-  }
+  const data = await fetchJson(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: { maxOutputTokens: 2048 },
+      }),
+    },
+    PROVIDERS.google.label,
+    { timeoutMs: config.llm.timeoutMs }
+  );
   const parts = data.candidates?.[0]?.content?.parts || [];
   return parts.map((p) => p.text || '').join('');
 }
 
 async function callOpenAI(model, key, system, user) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: model.id,
-      max_tokens: 2048,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new LlmError(`OpenAI-Fehler: ${data.error?.message || res.statusText}`, 'API_ERROR');
-  }
+  const data = await fetchJson(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: model.id,
+        max_tokens: 2048,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    },
+    PROVIDERS.openai.label,
+    { timeoutMs: config.llm.timeoutMs }
+  );
   return data.choices?.[0]?.message?.content || '';
 }
 
@@ -484,22 +571,23 @@ async function callLiteLLM(model, key, system, user) {
       'NO_BASE_URL'
     );
   }
-  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: model.id,
-      max_tokens: 2048,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new LlmError(`LiteLLM-Proxy-Fehler: ${data.error?.message || res.statusText}`, 'API_ERROR');
-  }
+  const data = await fetchJson(
+    `${baseUrl}/v1/chat/completions`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: model.id,
+        max_tokens: 2048,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    },
+    PROVIDERS.litellm.label,
+    { baseUrl, timeoutMs: config.llm.timeoutMs }
+  );
   return data.choices?.[0]?.message?.content || '';
 }
 
@@ -509,13 +597,12 @@ const CALLERS = { anthropic: callAnthropic, google: callGemini, openai: callOpen
 // Jeder Fetcher liefert [{ id, label }] mit textgenerierungsfähigen Modellen.
 
 async function fetchAnthropicModels(key) {
-  const res = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
-    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new LlmError(`Anthropic antwortet: ${data.error?.message || res.statusText}`, 'FETCH_ERROR');
-  }
+  const data = await fetchJson(
+    'https://api.anthropic.com/v1/models?limit=1000',
+    { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' } },
+    PROVIDERS.anthropic.label,
+    { timeoutMs: config.llm.fetchTimeoutMs }
+  );
   // /v1/models listet ausschließlich Text-/Chat-Modelle – kein Filter nötig.
   return (data.data || [])
     .filter((m) => m && m.id)
@@ -530,11 +617,12 @@ async function fetchGeminiModels(key) {
     const url =
       'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200' +
       (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
-    const res = await fetch(url, { headers: { 'x-goog-api-key': key } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new LlmError(`Google Gemini antwortet: ${data.error?.message || res.statusText}`, 'FETCH_ERROR');
-    }
+    const data = await fetchJson(
+      url,
+      { headers: { 'x-goog-api-key': key } },
+      PROVIDERS.google.label,
+      { timeoutMs: config.llm.fetchTimeoutMs }
+    );
     for (const m of data.models || []) {
       const methods = m.supportedGenerationMethods || [];
       if (!methods.includes('generateContent')) continue; // nur textfähige Modelle
@@ -551,13 +639,12 @@ async function fetchGeminiModels(key) {
 const OPENAI_NON_TEXT = /(embedding|whisper|tts|dall-e|moderation|audio|image|realtime|transcribe|search|similarity|davinci|babbage)/i;
 
 async function fetchOpenAIModels(key) {
-  const res = await fetch('https://api.openai.com/v1/models', {
-    headers: { Authorization: `Bearer ${key}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new LlmError(`OpenAI antwortet: ${data.error?.message || res.statusText}`, 'FETCH_ERROR');
-  }
+  const data = await fetchJson(
+    'https://api.openai.com/v1/models',
+    { headers: { Authorization: `Bearer ${key}` } },
+    PROVIDERS.openai.label,
+    { timeoutMs: config.llm.fetchTimeoutMs }
+  );
   return (data.data || [])
     .map((m) => m && m.id)
     .filter((id) => id && /^(gpt|o\d|chatgpt)/i.test(id) && !OPENAI_NON_TEXT.test(id))
@@ -570,13 +657,12 @@ async function fetchLiteLLMModels(key) {
   if (!baseUrl) {
     throw new LlmError('Keine Basis-URL für den LiteLLM-Proxy hinterlegt.', 'NO_BASE_URL');
   }
-  const res = await fetch(`${baseUrl}/v1/models`, {
-    headers: { Authorization: `Bearer ${key}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new LlmError(`LiteLLM-Proxy antwortet: ${data.error?.message || res.statusText}`, 'FETCH_ERROR');
-  }
+  const data = await fetchJson(
+    `${baseUrl}/v1/models`,
+    { headers: { Authorization: `Bearer ${key}` } },
+    PROVIDERS.litellm.label,
+    { baseUrl, timeoutMs: config.llm.fetchTimeoutMs }
+  );
   return (data.data || [])
     .map((m) => m && m.id)
     .filter(Boolean)
@@ -591,11 +677,51 @@ const MODEL_FETCHERS = {
   litellm: fetchLiteLLMModels,
 };
 
+// Protokolliert einen KI-Aufruf (nur Metadaten, nie Texte). ctx wird von fn
+// befüllt, sobald Anbieter/Modell feststehen. Das Schreiben wird nicht
+// abgewartet; llmLog.append fängt eigene Fehler selbst ab.
+async function protokolliert(zweck, ctx, fn) {
+  const start = Date.now();
+  const eintrag = (fehler) => {
+    const bekannt = fehler instanceof LlmError;
+    llmLog.append({
+      anbieter: ctx.anbieter || null,
+      anbieterLabel: ctx.anbieterLabel || null,
+      modell: ctx.modell || null,
+      zweck,
+      dauerMs: Date.now() - start,
+      ok: !fehler,
+      fehlerCode: fehler ? (bekannt ? fehler.code : 'INTERNAL') : null,
+      fehlerText: fehler ? (bekannt ? fehler.message : 'Interner Fehler') : null,
+    });
+  };
+  try {
+    const result = await fn();
+    eintrag(null);
+    return result;
+  } catch (err) {
+    eintrag(err);
+    throw err;
+  }
+}
+
+function setzeKontext(ctx, provider, modell) {
+  ctx.anbieter = provider;
+  ctx.anbieterLabel = PROVIDERS[provider] ? PROVIDERS[provider].label : provider;
+  ctx.modell = modell;
+}
+
 // Ruft die Modell-Liste eines Anbieters ab und legt sie lokal ab.
 // Der API-Key verlässt dabei niemals den Server.
 async function fetchProviderModels(provider) {
+  const ctx = {};
+  return protokolliert('modelle', ctx, () => fetchProviderModelsInner(provider, ctx));
+}
+
+async function fetchProviderModelsInner(provider, ctx) {
   const cfg = PROVIDERS[provider];
   if (!cfg) throw new LlmError('Unbekannter Anbieter.', 'BAD_PROVIDER');
+  setzeKontext(ctx, provider, null);
 
   const key = resolveKey(provider);
   if (!key) {
@@ -627,10 +753,16 @@ async function fetchProviderModels(provider) {
   return { count: models.length, fetchedAt };
 }
 
-async function generatePrompt({ project, ticket, modelId }) {
+async function generatePrompt(args) {
+  const ctx = {};
+  return protokolliert('prompt', ctx, () => generatePromptInner(args, ctx));
+}
+
+async function generatePromptInner({ project, ticket, modelId }, ctx) {
   const models = allModels();
   const model = models.find((m) => m.id === (modelId || DEFAULT_MODEL)) || models.find((m) => m.id === DEFAULT_MODEL);
   if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
+  setzeKontext(ctx, model.provider, model.id);
 
   const key = resolveKey(model.provider);
   if (!key) {
@@ -663,7 +795,12 @@ async function generatePrompt({ project, ticket, modelId }) {
 // Erzeugt EINEN Super-Prompt aus mehreren (Boss-Move-)Tickets. Nutzt eine
 // eigene System-Anweisung und die projektweite BM-KI-Anweisung, unabhängig von
 // der normalen promptSkill.
-async function generateBossMovePrompt({ project, tickets, modelId }) {
+async function generateBossMovePrompt(args) {
+  const ctx = {};
+  return protokolliert('bossmove', ctx, () => generateBossMovePromptInner(args, ctx));
+}
+
+async function generateBossMovePromptInner({ project, tickets, modelId }, ctx) {
   if (!Array.isArray(tickets) || tickets.length === 0) {
     throw new LlmError('Keine Tickets im Boss-Move-Status (grün) markiert.', 'NO_TICKETS');
   }
@@ -671,6 +808,7 @@ async function generateBossMovePrompt({ project, tickets, modelId }) {
   const models = allModels();
   const model = models.find((m) => m.id === (modelId || DEFAULT_MODEL)) || models.find((m) => m.id === DEFAULT_MODEL);
   if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
+  setzeKontext(ctx, model.provider, model.id);
 
   const key = resolveKey(model.provider);
   if (!key) {
@@ -727,7 +865,12 @@ function buildDraftUserContent(project, text) {
   return out;
 }
 
-async function draftTicketFromText({ project, text, modelId }) {
+async function draftTicketFromText(args) {
+  const ctx = {};
+  return protokolliert('entwurf', ctx, () => draftTicketFromTextInner(args, ctx));
+}
+
+async function draftTicketFromTextInner({ project, text, modelId }, ctx) {
   if (!text || !text.trim()) {
     throw new LlmError('Bitte zuerst eine Idee als Freitext eingeben.', 'NO_TEXT');
   }
@@ -735,6 +878,7 @@ async function draftTicketFromText({ project, text, modelId }) {
   const models = allModels();
   const model = models.find((m) => m.id === (modelId || DEFAULT_MODEL)) || models.find((m) => m.id === DEFAULT_MODEL);
   if (!model) throw new LlmError('Unbekanntes Modell.', 'BAD_MODEL');
+  setzeKontext(ctx, model.provider, model.id);
 
   const key = resolveKey(model.provider);
   if (!key) {
@@ -792,4 +936,5 @@ module.exports = {
   fetchProviderModels,
   LlmError,
   DEFAULT_MODEL,
+  _intern: { httpFehler, uebersetzeFehler, normalizeBaseUrl, callLiteLLM },
 };
